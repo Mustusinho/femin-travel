@@ -167,34 +167,41 @@ async function handleRoute(request, { params }) {
     // === LEADS ===
     if (route === '/leads' && method === 'POST') {
       const body = await request.json()
-      const { name, email } = body
-      
+      const { name, email, destination, travelStyle, travelerType, travelWindow, source } = body
+
       if (!name || !email) {
         return handleCORS(NextResponse.json(
           { error: 'name and email are required' },
           { status: 400 }
         ))
       }
-      
+
       const lead = {
         id: uuidv4(),
         name,
         email,
         created_at: new Date().toISOString()
       }
-      
+
       const { supabase, isSupabaseAvailable } = getSupabase()
-      
+
       if (isSupabaseAvailable) {
         await supabase.from('leads').insert(lead)
       } else {
         inMemoryStore.leads.push(lead)
         console.log('Lead captured (in-memory):', lead)
       }
-      
-      // Track event
-      await trackEvent('lead_captured', { email })
-      
+
+      // Track event — includes optional metadata for analytics; never breaks insert
+      await trackEvent('lead_captured', {
+        email,
+        destination: destination || null,
+        travelStyle: travelStyle || null,
+        travelerType: travelerType || null,
+        travelWindow: travelWindow || null,
+        source: source || 'unknown',
+      })
+
       return handleCORS(NextResponse.json({ success: true, id: lead.id }))
     }
 
