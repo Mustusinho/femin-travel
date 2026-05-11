@@ -69,6 +69,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "autoprefixer": "^10.4.19",
     "cross-env": "^10.1.0",
     "globals": "^16.2.0",

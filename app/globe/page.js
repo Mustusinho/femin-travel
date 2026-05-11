@@ -664,6 +664,45 @@ function DestinationPanel({ destination, brief, isLoading, onClose, isMobile, on
 }
 
 // -----------------------------
+// Globe 2D fallback (shown when WebGL/import fails)
+// -----------------------------
+function GlobeFallback({ onSelectDestination }) {
+  return (
+    <div className="absolute inset-0 flex items-start justify-center overflow-y-auto pt-20 pb-8 px-4">
+      <div className="max-w-2xl w-full text-center">
+        <div className="text-5xl mb-4">🌍</div>
+        <h2 className="font-serif text-2xl font-bold text-white mb-2">3D Globe Unavailable</h2>
+        <p className="text-white/70 text-sm mb-8 max-w-sm mx-auto">
+          3D rendering isn&apos;t available in this browser right now. Explore destinations below — click any to get your full AI travel brief.
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
+          {featuredDestinations.map((dest) => (
+            <button
+              key={dest.id}
+              onClick={() => onSelectDestination(dest)}
+              className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4
+                         hover:bg-white/20 transition-all text-left group"
+            >
+              <p className="font-semibold text-white text-sm">{dest.name}</p>
+              <p className="text-white/60 text-xs mt-0.5">{dest.country}</p>
+              <p className="text-pink-300 text-xs mt-2 group-hover:text-pink-200">View brief →</p>
+            </button>
+          ))}
+        </div>
+
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 mt-10 text-white/60 hover:text-white text-sm transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Home
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+// -----------------------------
 // Main content
 // -----------------------------
 function GlobePageContent() {
@@ -1103,12 +1142,7 @@ function GlobePageContent() {
       {/* Globe */}
       <div className="absolute inset-0">
         {blocked ? (
-          <div className="w-full h-full flex items-center justify-center text-center text-white px-6">
-            <div className="max-w-md">
-              <div className="font-serif text-2xl mb-2">Globe preview</div>
-              <p className="text-white/70">Your browser blocks 3D rendering. Try Chrome or desktop for the interactive globe.</p>
-            </div>
-          </div>
+          <GlobeFallback onSelectDestination={selectDestination} />
         ) : !Globe || viewport.w === 0 ? (
           <div className="w-full h-full flex items-center justify-center">
             <div className="text-center text-white">

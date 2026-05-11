@@ -19,6 +19,13 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
+// Normalize blog post fields: Supabase uses published_at (snake_case), UI expects publishedAt
+function normalizeBlogPost(post) {
+  if (!post) return post
+  const publishedAt = post.published_at ?? post.publishedAt ?? null
+  return { ...post, publishedAt }
+}
+
 // Route handler function
 async function handleRoute(request, { params }) {
   const { path = [] } = params
@@ -218,10 +225,10 @@ async function handleRoute(request, { params }) {
           .order('published_at', { ascending: false })
         
         if (!error && data?.length) {
-          return handleCORS(NextResponse.json(data))
+          return handleCORS(NextResponse.json(data.map(normalizeBlogPost)))
         }
       }
-      
+
       // Fallback to demo posts
       return handleCORS(NextResponse.json(demoBlogPosts))
     }
@@ -239,10 +246,10 @@ async function handleRoute(request, { params }) {
           .single()
         
         if (!error && data) {
-          return handleCORS(NextResponse.json(data))
+          return handleCORS(NextResponse.json(normalizeBlogPost(data)))
         }
       }
-      
+
       // Fallback to demo posts
       const post = demoBlogPosts.find(p => p.slug === slug)
       if (post) {

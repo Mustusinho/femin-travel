@@ -40,7 +40,7 @@ export default function GlobeHero() {
                 Explore the Globe <ArrowRight className="w-4 h-4" />
               </Link>
 
-              <Link href="#kit" className="btn-secondary inline-flex items-center justify-center gap-2">
+              <Link href="#free-kit" className="btn-secondary inline-flex items-center justify-center gap-2">
                 <ShieldCheck className="w-4 h-4" /> Get Free Travel Kit
               </Link>
             </div>

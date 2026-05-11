@@ -560,9 +560,9 @@ function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+              <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><a href="mailto:hello@femintravel.com" className="hover:text-white transition-colors">Contact</a></li>
             </ul>
           </div>
         </div>
@@ -572,14 +572,8 @@ function Footer() {
             © 2025 FeminTravel. Made with <Heart className="w-4 h-4 inline text-[hsl(346,74%,65%)]" /> for solo travelers.
           </p>
           <div className="flex gap-4">
-            <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors">
-              <span className="sr-only">Instagram</span>📷
-            </a>
-            <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors">
-              <span className="sr-only">Twitter</span>🐦
-            </a>
-            <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors">
-              <span className="sr-only">YouTube</span>🎥
+            <a href="mailto:hello@femintravel.com" className="text-gray-400 hover:text-white transition-colors text-sm">
+              hello@femintravel.com
             </a>
           </div>
         </div>

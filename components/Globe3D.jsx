@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 // This wrapper prevents iOS Safari from crashing by polyfilling WebGPU enums
 // BEFORE react-globe.gl/globe.gl code runs (they reference GPUShaderStage.*).
@@ -97,10 +98,17 @@ export default function Globe3D({
     return (
       <div className="w-full aspect-square rounded-[32px] bg-white/40 border border-white/50 backdrop-blur flex items-center justify-center text-center p-6">
         <div>
-          <div className="font-serif text-lg text-gray-900">Globe preview</div>
-          <p className="text-sm text-gray-600 mt-2">
-            Your browser is blocking 3D rendering. Try opening in Chrome or desktop.
+          <div className="text-4xl mb-3">🌍</div>
+          <div className="font-serif text-base text-gray-900 font-semibold mb-1">Globe Preview</div>
+          <p className="text-sm text-gray-600 mb-4">
+            3D globe isn&apos;t available here. Explore all destinations on the full Globe page.
           </p>
+          <Link
+            href="/globe"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-pink-600 hover:text-pink-700 transition-colors"
+          >
+            Open Globe →
+          </Link>
         </div>
       </div>
     );

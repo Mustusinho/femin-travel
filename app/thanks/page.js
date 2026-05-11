@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Check, Download, Globe, Plane, Hotel, Shield, Heart, Gift, MessageCircle, Send, X, Sparkles } from 'lucide-react'
+import { Check, Globe, Plane, Hotel, Shield, Heart, Gift, MessageCircle, Send, X, Sparkles, ArrowRight } from 'lucide-react'
 
 // Chat Widget
 function ChatWidget() {
@@ -125,22 +125,23 @@ export default function ThanksPage() {
           </div>
 
           <h1 className="font-['Playfair_Display'] text-4xl md:text-5xl font-bold mb-4">
-            You're In! 🎉
+            You&apos;re In! 🎉
           </h1>
           <p className="text-xl text-gray-600 mb-8">
-            Your <span className="text-[hsl(346,74%,55%)] font-semibold">Solo Luxe Travel Kit</span> is ready!
+            We&apos;ll send your <span className="text-[hsl(346,74%,55%)] font-semibold">Solo Luxe Travel Kit</span> to your inbox shortly.
           </p>
 
-          {/* Download Button */}
-          <a 
-            href="#"
-            className="inline-flex items-center gap-3 bg-gradient-to-r from-[hsl(346,74%,75%)] to-[hsl(270,50%,75%)] 
+          {/* Primary CTA */}
+          <Link
+            href="/globe"
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-[hsl(346,74%,75%)] to-[hsl(270,50%,75%)]
                        text-white font-semibold text-lg py-4 px-8 rounded-2xl shadow-lg
                        hover:shadow-xl hover:scale-105 transition-all mb-12"
           >
-            <Download className="w-6 h-6" />
-            Download Your Free Kit (PDF)
-          </a>
+            <Globe className="w-6 h-6" />
+            Start Exploring Destinations
+            <ArrowRight className="w-5 h-5" />
+          </Link>
 
           {/* What's Inside */}
           <div className="bg-white rounded-3xl p-8 shadow-xl mb-12 text-left">
@@ -192,8 +193,13 @@ export default function ThanksPage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {/* Hotels */}
-            <a href="#" className="group bg-gradient-to-br from-[hsl(346,74%,97%)] to-white rounded-3xl p-6 text-center
-                                   hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[hsl(346,74%,90%)]">
+            <a
+              href="https://www.booking.com"
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="group bg-gradient-to-br from-[hsl(346,74%,97%)] to-white rounded-3xl p-6 text-center
+                         hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[hsl(346,74%,90%)]"
+            >
               <div className="w-16 h-16 mx-auto mb-4 bg-[hsl(346,74%,90%)] rounded-2xl flex items-center justify-center
                               group-hover:bg-[hsl(346,74%,80%)] transition-colors">
                 <Hotel className="w-8 h-8 text-[hsl(346,74%,50%)]" />
@@ -204,8 +210,13 @@ export default function ThanksPage() {
             </a>
 
             {/* Flights */}
-            <a href="#" className="group bg-gradient-to-br from-[hsl(270,50%,97%)] to-white rounded-3xl p-6 text-center
-                                   hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[hsl(270,50%,90%)]">
+            <a
+              href="https://www.google.com/travel/flights"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group bg-gradient-to-br from-[hsl(270,50%,97%)] to-white rounded-3xl p-6 text-center
+                         hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[hsl(270,50%,90%)]"
+            >
               <div className="w-16 h-16 mx-auto mb-4 bg-[hsl(270,50%,90%)] rounded-2xl flex items-center justify-center
                               group-hover:bg-[hsl(270,50%,80%)] transition-colors">
                 <Plane className="w-8 h-8 text-[hsl(270,50%,50%)]" />
@@ -216,8 +227,13 @@ export default function ThanksPage() {
             </a>
 
             {/* Insurance */}
-            <a href="#" className="group bg-gradient-to-br from-[hsl(45,90%,97%)] to-white rounded-3xl p-6 text-center
-                                   hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[hsl(45,90%,85%)]">
+            <a
+              href="https://safetywing.com/nomad-insurance/"
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="group bg-gradient-to-br from-[hsl(45,90%,97%)] to-white rounded-3xl p-6 text-center
+                         hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[hsl(45,90%,85%)]"
+            >
               <div className="w-16 h-16 mx-auto mb-4 bg-[hsl(45,90%,88%)] rounded-2xl flex items-center justify-center
                               group-hover:bg-[hsl(45,90%,80%)] transition-colors">
                 <Shield className="w-8 h-8 text-[hsl(45,90%,40%)]" />
@@ -230,29 +246,22 @@ export default function ThanksPage() {
         </div>
       </section>
 
-      {/* Social Follow */}
+      {/* Community teaser */}
       <section className="py-12 px-4 bg-gradient-to-br from-[hsl(346,74%,95%)] to-[hsl(270,50%,95%)]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="font-['Playfair_Display'] text-2xl font-bold mb-4">
-            Join Our Community
+            Read the Blog
           </h2>
           <p className="text-gray-600 mb-6">
-            Follow us for daily travel inspiration, tips, and stories from solo female travelers around the world.
+            Safety guides, packing tips, and stories for solo female travelers.
           </p>
-          <div className="flex justify-center gap-4">
-            <a href="#" className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all">
-              📷
-            </a>
-            <a href="#" className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all">
-              🐦
-            </a>
-            <a href="#" className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all">
-              🎥
-            </a>
-            <a href="#" className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all">
-              📌
-            </a>
-          </div>
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-2 bg-white text-[hsl(346,74%,45%)] font-semibold py-3 px-6 rounded-2xl shadow-md hover:shadow-lg transition-all"
+          >
+            <Gift className="w-5 h-5" />
+            Browse Articles
+          </Link>
         </div>
       </section>
 

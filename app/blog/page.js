@@ -4,6 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Menu, X, Globe, BookOpen, Gift, Search, ChevronRight, Calendar, Tag, MessageCircle, Send, Sparkles } from 'lucide-react'
 
+function formatPostDate(post, opts) {
+  const raw = post?.publishedAt ?? post?.published_at
+  if (!raw) return ''
+  const d = new Date(raw)
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', opts)
+}
+
 // Header Component
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -183,7 +190,7 @@ function BlogCard({ post }) {
             </span>
             <span className="text-gray-400 text-xs flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              {formatPostDate(post, { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
           <h3 className="font-['Playfair_Display'] text-xl font-semibold mb-2 group-hover:text-[hsl(346,74%,55%)] transition-colors">

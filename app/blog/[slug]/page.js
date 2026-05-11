@@ -7,6 +7,13 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Menu, X, Globe, BookOpen, Gift, ArrowLeft, Calendar, Tag, MessageCircle, Send, Sparkles, Share2 } from 'lucide-react'
 
+function formatPostDate(post, opts) {
+  const raw = post?.publishedAt ?? post?.published_at
+  if (!raw) return ''
+  const d = new Date(raw)
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', opts)
+}
+
 // Header Component
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -167,6 +174,40 @@ function ChatWidget() {
   )
 }
 
+function ShareButton({ post }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: post?.title, text: post?.excerpt, url })
+      } catch {}
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+
+  return (
+    <div className="mt-12 pt-8 border-t">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <p className="text-gray-500">Share this article:</p>
+        <button
+          onClick={handleShare}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors text-sm text-gray-600"
+        >
+          <Share2 className="w-4 h-4" />
+          {copied ? 'Link copied!' : 'Share'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function BlogPostPage() {
   const params = useParams()
   const [post, setPost] = useState(null)
@@ -250,7 +291,7 @@ export default function BlogPostPage() {
               </span>
               <span className="text-gray-400 text-sm flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                {formatPostDate(post, { month: 'long', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
             <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
@@ -280,16 +321,7 @@ export default function BlogPostPage() {
           </div>
 
           {/* Share */}
-          <div className="mt-12 pt-8 border-t">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <p className="text-gray-500">Share this article:</p>
-              <div className="flex gap-2">
-                <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
-                  <Share2 className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <ShareButton post={post} />
         </div>
       </article>
 
