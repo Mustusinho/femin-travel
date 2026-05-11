@@ -125,28 +125,36 @@ export default function ThanksPage() {
           </div>
 
           <h1 className="font-['Playfair_Display'] text-4xl md:text-5xl font-bold mb-4">
-            You&apos;re In! 🎉
+            Your kit is ready
           </h1>
           <p className="text-xl text-gray-600 mb-8">
-            We&apos;ll send your <span className="text-[hsl(346,74%,55%)] font-semibold">Solo Luxe Travel Kit</span> to your inbox shortly.
+            Your <span className="text-[hsl(346,74%,55%)] font-semibold">Free Solo Travel Kit</span> is waiting — open it now.
           </p>
 
-          {/* Primary CTA */}
+          {/* Primary CTA — kit */}
           <Link
-            href="/globe"
+            href="/free-kit"
             className="inline-flex items-center gap-3 bg-gradient-to-r from-[hsl(346,74%,75%)] to-[hsl(270,50%,75%)]
                        text-white font-semibold text-lg py-4 px-8 rounded-2xl shadow-lg
-                       hover:shadow-xl hover:scale-105 transition-all mb-12"
+                       hover:shadow-xl hover:scale-105 transition-all mb-4"
           >
-            <Globe className="w-6 h-6" />
-            Start Exploring Destinations
+            <Check className="w-6 h-6" />
+            Open Free Kit
             <ArrowRight className="w-5 h-5" />
+          </Link>
+
+          <Link
+            href="/globe"
+            className="inline-flex items-center gap-2 text-[hsl(346,74%,55%)] text-sm font-medium hover:underline mb-12"
+          >
+            <Globe className="w-4 h-4" />
+            Or explore destinations on the globe
           </Link>
 
           {/* What's Inside */}
           <div className="bg-white rounded-3xl p-8 shadow-xl mb-12 text-left">
             <h2 className="font-['Playfair_Display'] text-2xl font-bold text-center mb-6">
-              What's Inside Your Kit
+              What&apos;s in your kit
             </h2>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
@@ -154,8 +162,8 @@ export default function ThanksPage() {
                   <Check className="w-4 h-4 text-[hsl(346,74%,55%)]" />
                 </div>
                 <div>
-                  <p className="font-semibold">📦 Ultimate Packing Checklist</p>
-                  <p className="text-gray-600 text-sm">Never forget essentials again with our curated list</p>
+                  <p className="font-semibold">Safety pre-trip checklist</p>
+                  <p className="text-gray-600 text-sm">What to research, save, and set up before you go</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -163,8 +171,8 @@ export default function ThanksPage() {
                   <Check className="w-4 h-4 text-[hsl(346,74%,55%)]" />
                 </div>
                 <div>
-                  <p className="font-semibold">🛡️ Solo Safety Guide</p>
-                  <p className="text-gray-600 text-sm">Expert tips for staying safe on your adventures</p>
+                  <p className="font-semibold">Arrival &amp; packing checklists</p>
+                  <p className="text-gray-600 text-sm">Smart packing and a first-hours arrival plan</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -172,8 +180,8 @@ export default function ThanksPage() {
                   <Check className="w-4 h-4 text-[hsl(346,74%,55%)]" />
                 </div>
                 <div>
-                  <p className="font-semibold">💰 Budget Planner Template</p>
-                  <p className="text-gray-600 text-sm">Track expenses and save money like a pro</p>
+                  <p className="font-semibold">Budget prep + emergency info</p>
+                  <p className="text-gray-600 text-sm">Financial planning and what to save offline</p>
                 </div>
               </li>
             </ul>

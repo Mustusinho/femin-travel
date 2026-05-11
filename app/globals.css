@@ -130,6 +130,10 @@
 .chat-bubble-user { @apply bg-[hsl(346,74%,85%)] text-[hsl(346,74%,25%)] rounded-2xl rounded-br-md; }
 .chat-bubble-assistant { @apply bg-gray-100 text-gray-800 rounded-2xl rounded-bl-md; }
 
+/* Hide scrollbar for horizontal snap carousels */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: hsl(30, 20%, 95%); border-radius: 3px; }
