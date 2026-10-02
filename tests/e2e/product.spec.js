@@ -208,7 +208,17 @@ test('mobile destination sheet expands, keeps its CTA visible and closes with Es
   await page.getByRole('button', { name: 'Expand or collapse destination panel' }).click()
   await expect
     .poll(async () => Math.round((await panel.boundingBox()).height))
-    .toBeGreaterThan(Math.round(before))
+    .toBe(Math.round(844 * 0.65))
+  expect(Math.round(844 * 0.65)).toBeGreaterThan(before)
+  const handle = page.getByRole('button', { name: 'Expand or collapse destination panel' })
+  const bounds = await handle.boundingBox()
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 200, {
+    steps: 15
+  })
+  await page.mouse.up()
+  await expect.poll(async () => Math.round((await panel.boundingBox()).height)).toBeGreaterThan(650)
   await page.screenshot({ path: '.qa/screenshots/390-globe-panel.png', fullPage: true })
   await page.keyboard.press('Escape')
   await expect(panel).toHaveCount(0)

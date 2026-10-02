@@ -205,6 +205,8 @@ function DestinationPanel({
   }, [destination?.name])
   const [heightPx, setHeightPx] = useState(0)
   const draggingRef = useRef(false)
+  const movedRef = useRef(false)
+  const dragHeightRef = useRef(0)
   const startY = useRef(0)
   const startH = useRef(0)
 
@@ -504,6 +506,8 @@ function DestinationPanel({
   // ── Mobile bottom sheet ──
   const onHandlePointerDown = (e) => {
     draggingRef.current = true
+    movedRef.current = false
+    dragHeightRef.current = heightPx
     startY.current = e.clientY
     startH.current = heightPx
     try {
@@ -513,13 +517,16 @@ function DestinationPanel({
   const onHandlePointerMove = (e) => {
     if (!draggingRef.current) return
     const delta = startY.current - e.clientY
-    setHeightPx(clamp(startH.current + delta, 240, snapPx[2]))
+    if (Math.abs(delta) > 6) movedRef.current = true
+    dragHeightRef.current = clamp(startH.current + delta, 240, snapPx[2])
+    setHeightPx(dragHeightRef.current)
   }
   const onHandlePointerUp = () => {
     if (!draggingRef.current) return
     draggingRef.current = false
     const nearest = snapPx.reduce(
-      (best, v) => (Math.abs(v - heightPx) < Math.abs(best - heightPx) ? v : best),
+      (best, v) =>
+        Math.abs(v - dragHeightRef.current) < Math.abs(best - dragHeightRef.current) ? v : best,
       snapPx[0]
     )
     setHeightPx(nearest)
@@ -536,7 +543,14 @@ function DestinationPanel({
       <button
         type="button"
         aria-label="Expand or collapse destination panel"
-        onClick={() => setHeightPx(heightPx < snapPx[1] ? snapPx[1] : snapPx[0])}
+        aria-expanded={heightPx >= snapPx[1]}
+        onClick={(e) => {
+          if (e.detail > 0 && movedRef.current) {
+            movedRef.current = false
+            return
+          }
+          setHeightPx(heightPx < snapPx[1] ? snapPx[1] : snapPx[0])
+        }}
         className="py-3 flex-shrink-0"
         style={{ touchAction: 'none' }}
         onPointerDown={onHandlePointerDown}
