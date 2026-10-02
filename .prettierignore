@@ -1,0 +1,7 @@
+node_modules
+.next
+.next-qa
+yarn.lock
+public
+components/ui
+test_result.md
