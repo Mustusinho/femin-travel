@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 
 export const metadata = {
-  title: 'Free Solo Travel Kit — FeminTravel',
+  title: 'Free Free Solo Travel Planning Kit — FeminTravel',
   description: 'Your complete solo travel kit: safety checklists, packing lists, budget prep, and emergency planning.',
 }
 
@@ -147,7 +147,7 @@ function ChecklistCard({ checklist }) {
 
 export default function FreeKitPage() {
   return (
-    <main className="min-h-screen bg-[hsl(30,33%,98%)] pb-20">
+    <main id="main-content" className="min-h-screen bg-[hsl(30,33%,98%)] pb-20">
       {/* Header */}
       <div className="bg-gradient-to-br from-[hsl(346,74%,92%)] via-[hsl(300,40%,96%)] to-[hsl(270,50%,92%)] px-4 pt-8 pb-12">
         <div className="max-w-2xl mx-auto">
@@ -160,7 +160,7 @@ export default function FreeKitPage() {
             </div>
             <div>
               <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-                Solo Travel Kit
+                Free Solo Travel Planning Kit
               </h1>
               <p className="text-[hsl(346,74%,45%)] text-sm font-medium">Your free planning resource</p>
             </div>
@@ -218,15 +218,15 @@ export default function FreeKitPage() {
             Ready to explore?
           </p>
           <p className="text-gray-500 text-sm mb-5">
-            Use the globe to generate an AI travel brief for any destination.
+            Build an itinerary around your dates, interests and planning preferences.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/globe"
+              href="/plan"
               className="btn-primary inline-flex items-center justify-center gap-2 py-3 px-6"
             >
               <Globe className="w-4 h-4" />
-              Explore the Globe
+              Plan My Trip
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link

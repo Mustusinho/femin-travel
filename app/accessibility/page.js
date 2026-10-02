@@ -1,0 +1,4 @@
+import TrustPage from '@/components/layout/TrustPage'
+import {pageMetadata} from '@/lib/metadata'
+export const metadata=pageMetadata('Accessibility','Accessible alternatives to the globe and planning controls.','/accessibility')
+export default function Accessibility(){return <TrustPage title="Accessibility"><p>You can plan a trip without using the 3D globe. The planner, destination directory and guides provide text navigation and labelled controls. The globe also offers destination buttons and city search.</p><p>We aim to support keyboard navigation, visible focus, readable text and reduced motion preferences. This is an ongoing effort, not a certification of conformance.</p><p>If a control prevents you from planning, use the Contact page’s available contact method to describe the page and the issue.</p></TrustPage>}
