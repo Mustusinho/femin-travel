@@ -1,310 +1,44 @@
-import { NextResponse } from 'next/server'
-import { v4 as uuidv4 } from 'uuid'
-import { getSupabase, inMemoryStore } from '@/lib/db/supabase'
 import { featuredDestinations, demoBlogPosts } from '@/lib/db/data'
-import { generateTravelBrief, generateChatResponse } from '@/lib/openai'
-import { reverseGeocode, forwardGeocode } from '@/lib/geocoding'
-
-// Helper function to handle CORS
-function handleCORS(response) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
-  return response
+import { generateTravelBrief, generateChatResponse, generateTripPlan } from '@/lib/openai'
+import { reverseGeocode, forwardGeocode, searchLocations } from '@/lib/geocoding'
+import { readConfig } from '@/lib/config.mjs'
+import { leadSchema,tripSchema,reverseSchema,forwardSchema,aiBriefSchema,chatSchema,eventSchema,contactSchema,saveSchema,tokenSchema } from '@/lib/validation.mjs'
+import { json,readBody,sameOrigin,rateLimit,safeError,HttpError } from '@/lib/server/http'
+import { database,persistLead,recordEvent,saveTrip,loadTrip } from '@/lib/server/storage'
+import { sendEmail } from '@/lib/server/email'
+export const runtime='nodejs'
+export const dynamic='force-dynamic'
+export const maxDuration=60
+export async function GET(request,{params}){
+ const route=(params.path || []).join('/')
+ try{
+  if(!route || route==='root')return json({message:'FeminTravel API',status:'healthy'})
+  if(route==='capabilities'){const c=readConfig();return json({ai:c.ai,save:c.storage,email:c.email && Boolean(c.appUrl),contactForm:c.email && Boolean(c.contact),leads:c.storage,analytics:c.analytics})}
+  if(route==='destinations')return json(featuredDestinations)
+  if(route==='blog')return json(demoBlogPosts)
+  if(route.startsWith('blog/')){const post=demoBlogPosts.find(p=>p.slug===params.path[1]);if(!post)throw new HttpError(404,'Article not found.');return json(post)}
+  if(route.startsWith('trips/')){const token=tokenSchema.safeParse(params.path[1]);if(!token.success)throw new HttpError(404,'Trip not found.');await rateLimit(request,'trip_read',120);return json(await loadTrip(token.data))}
+  throw new HttpError(404,'Route not found.')
+ }catch(e){return safeError(e)}
 }
-
-// OPTIONS handler for CORS
-export async function OPTIONS() {
-  return handleCORS(new NextResponse(null, { status: 200 }))
-}
-
-// Normalize blog post fields: Supabase uses published_at (snake_case), UI expects publishedAt
-function normalizeBlogPost(post) {
-  if (!post) return post
-  const publishedAt = post.published_at ?? post.publishedAt ?? null
-  return { ...post, publishedAt }
-}
-
-// Route handler function
-async function handleRoute(request, { params }) {
-  const { path = [] } = params
-  const route = `/${path.join('/')}`
-  const method = request.method
-
-  try {
-    // === ROOT ===
-    if ((route === '/' || route === '/root') && method === 'GET') {
-      return handleCORS(NextResponse.json({ 
-        message: 'FeminTravel API',
-        version: '1.0.0',
-        status: 'healthy'
-      }))
-    }
-
-    // === DESTINATIONS ===
-    if (route === '/destinations' && method === 'GET') {
-      const { supabase, isSupabaseAvailable } = getSupabase()
-      
-      if (isSupabaseAvailable) {
-        const { data, error } = await supabase.from('destinations').select('*')
-        if (!error && data?.length) {
-          return handleCORS(NextResponse.json(data))
-        }
-      }
-      
-      // Fallback to demo data
-      return handleCORS(NextResponse.json(featuredDestinations))
-    }
-
-    // === GEOCODING ===
-    if (route === '/geocode/reverse' && method === 'POST') {
-      const body = await request.json()
-      const { lat, lng } = body
-      
-      if (lat === undefined || lng === undefined) {
-        return handleCORS(NextResponse.json(
-          { error: 'lat and lng are required' },
-          { status: 400 }
-        ))
-      }
-      
-      const result = await reverseGeocode(lat, lng)
-      return handleCORS(NextResponse.json(result))
-    }
-
-    if (route === '/geocode/forward' && method === 'POST') {
-      const body = await request.json()
-      const { query } = body
-      
-      if (!query) {
-        return handleCORS(NextResponse.json(
-          { error: 'query is required' },
-          { status: 400 }
-        ))
-      }
-      
-      const result = await forwardGeocode(query)
-      
-      if (!result) {
-        return handleCORS(NextResponse.json(
-          { error: 'Location not found' },
-          { status: 404 }
-        ))
-      }
-      
-      return handleCORS(NextResponse.json(result))
-    }
-
-    // === AI BRIEF ===
-    if (route === '/ai/brief' && method === 'POST') {
-      const body = await request.json()
-      const { placeName, country, lat, lng } = body
-      
-      if (!placeName) {
-        return handleCORS(NextResponse.json(
-          { error: 'placeName is required' },
-          { status: 400 }
-        ))
-      }
-      
-      // Check cache first
-      const cacheKey = `${placeName}-${country}`.toLowerCase().replace(/\s+/g, '-')
-      const { supabase, isSupabaseAvailable } = getSupabase()
-      
-      if (isSupabaseAvailable) {
-        const { data: cached } = await supabase
-          .from('destination_briefs')
-          .select('brief_data')
-          .eq('cache_key', cacheKey)
-          .single()
-        
-        if (cached?.brief_data) {
-          return handleCORS(NextResponse.json(cached.brief_data))
-        }
-      } else if (inMemoryStore.briefs.has(cacheKey)) {
-        return handleCORS(NextResponse.json(inMemoryStore.briefs.get(cacheKey)))
-      }
-      
-      // Generate new brief
-      const brief = await generateTravelBrief(placeName, country || 'Unknown', lat, lng)
-      
-      // Cache the brief
-      if (isSupabaseAvailable) {
-        await supabase.from('destination_briefs').insert({
-          id: uuidv4(),
-          cache_key: cacheKey,
-          place_name: placeName,
-          country: country || 'Unknown',
-          lat,
-          lng,
-          brief_data: brief,
-          created_at: new Date().toISOString()
-        })
-      } else {
-        inMemoryStore.briefs.set(cacheKey, brief)
-      }
-      
-      return handleCORS(NextResponse.json(brief))
-    }
-
-    // === AI CHAT ===
-    if (route === '/ai/chat' && method === 'POST') {
-      const body = await request.json()
-      const { messages, destinationContext } = body
-      
-      if (!messages || !Array.isArray(messages)) {
-        return handleCORS(NextResponse.json(
-          { error: 'messages array is required' },
-          { status: 400 }
-        ))
-      }
-      
-      const response = await generateChatResponse(messages, destinationContext)
-      return handleCORS(NextResponse.json({ response }))
-    }
-
-    // === LEADS ===
-    if (route === '/leads' && method === 'POST') {
-      const body = await request.json()
-      const { name, email, destination, travelStyle, travelerType, travelWindow, source } = body
-
-      if (!name || !email) {
-        return handleCORS(NextResponse.json(
-          { error: 'name and email are required' },
-          { status: 400 }
-        ))
-      }
-
-      const lead = {
-        id: uuidv4(),
-        name,
-        email,
-        created_at: new Date().toISOString()
-      }
-
-      const { supabase, isSupabaseAvailable } = getSupabase()
-
-      if (isSupabaseAvailable) {
-        await supabase.from('leads').insert(lead)
-      } else {
-        inMemoryStore.leads.push(lead)
-        console.log('Lead captured (in-memory):', lead)
-      }
-
-      // Track event — includes optional metadata for analytics; never breaks insert
-      await trackEvent('lead_captured', {
-        email,
-        destination: destination || null,
-        travelStyle: travelStyle || null,
-        travelerType: travelerType || null,
-        travelWindow: travelWindow || null,
-        source: source || 'unknown',
-      })
-
-      return handleCORS(NextResponse.json({ success: true, id: lead.id }))
-    }
-
-    // === EVENTS TRACKING ===
-    if (route === '/events' && method === 'POST') {
-      const body = await request.json()
-      const { event_type, event_data } = body
-      
-      if (!event_type) {
-        return handleCORS(NextResponse.json(
-          { error: 'event_type is required' },
-          { status: 400 }
-        ))
-      }
-      
-      await trackEvent(event_type, event_data || {})
-      return handleCORS(NextResponse.json({ success: true }))
-    }
-
-    // === BLOG ===
-    if (route === '/blog' && method === 'GET') {
-      const { supabase, isSupabaseAvailable } = getSupabase()
-      
-      if (isSupabaseAvailable) {
-        const { data, error } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .order('published_at', { ascending: false })
-        
-        if (!error && data?.length) {
-          return handleCORS(NextResponse.json(data.map(normalizeBlogPost)))
-        }
-      }
-
-      // Fallback to demo posts
-      return handleCORS(NextResponse.json(demoBlogPosts))
-    }
-
-    // Single blog post by slug
-    if (route.startsWith('/blog/') && method === 'GET') {
-      const slug = path[1]
-      const { supabase, isSupabaseAvailable } = getSupabase()
-      
-      if (isSupabaseAvailable) {
-        const { data, error } = await supabase
-          .from('blog_posts')
-          .select('*')
-          .eq('slug', slug)
-          .single()
-        
-        if (!error && data) {
-          return handleCORS(NextResponse.json(normalizeBlogPost(data)))
-        }
-      }
-
-      // Fallback to demo posts
-      const post = demoBlogPosts.find(p => p.slug === slug)
-      if (post) {
-        return handleCORS(NextResponse.json(post))
-      }
-      
-      return handleCORS(NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      ))
-    }
-
-    // Route not found
-    return handleCORS(NextResponse.json(
-      { error: `Route ${route} not found` },
-      { status: 404 }
-    ))
-
-  } catch (error) {
-    console.error('API Error:', error)
-    return handleCORS(NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    ))
+export async function POST(request,{params}){
+ const route=(params.path || []).join('/')
+ try{
+  sameOrigin(request)
+  if(route==='ai/brief'){const b=await readBody(request,aiBriefSchema);await rateLimit(request,'ai',12);return json(await generateTravelBrief(b.placeName,b.country,b.lat,b.lng))}
+  if(route==='ai/chat'){const b=await readBody(request,chatSchema);await rateLimit(request,'chat',30);return json({response:await generateChatResponse(b.messages,b.destinationContext)})}
+  if(route==='trips/generate'){const b=await readBody(request,tripSchema);if(readConfig().ai){await rateLimit(request,'trip_generate',6);await rateLimit(request,'ai',12)}return json(await generateTripPlan(b))}
+  if(route==='trips/save'){const b=await readBody(request,saveSchema);await rateLimit(request,'trip_save',12);return json({token:await saveTrip(b)},201)}
+  if(route==='geocode/reverse'){const b=await readBody(request,reverseSchema);await rateLimit(request,'geocode',80);return json(await reverseGeocode(b.lat,b.lng))}
+  if(route==='geocode/forward' || route==='geocode/search'){const b=await readBody(request,forwardSchema);await rateLimit(request,'geocode',80);const data=route.endsWith('search')?await searchLocations(b.query):await forwardGeocode(b.query);if(!data)throw new HttpError(404,'No location found.');return json(data)}
+  if(route==='leads'){
+   const b=await readBody(request,leadSchema);await rateLimit(request,'leads',5);await persistLead(database(),b)
+   let emailSent=false
+   if(b.emailRequested){try{if(readConfig().appUrl){await sendEmail({to:b.email,subject:'Your FeminTravel planning kit',text:`Your general planning kit: ${readConfig().appUrl}free-kit\nThis is a one-time resource email. You have not been subscribed to marketing.`});emailSent=true}}catch{/* Saving and sending have separate outcomes. */}}
+   return json({success:true,emailSent})
   }
+  if(route==='events'){const b=await readBody(request,eventSchema);if(!readConfig().analytics)return json({recorded:false});await rateLimit(request,'events',120);return json({recorded:await recordEvent(b.event_type,b.event_data)})}
+  if(route==='contact'){const b=await readBody(request,contactSchema);if(!readConfig().contact || !readConfig().email)throw new HttpError(503,'Contact delivery is not configured.');await rateLimit(request,'contact',5);await sendEmail({to:readConfig().contact,replyTo:b.email,subject:`FeminTravel: ${b.subject}`,text:`From: ${b.name}\n\n${b.message}`});return json({success:true})}
+  throw new HttpError(404,'Route not found.')
+ }catch(e){return safeError(e)}
 }
-
-// Helper to track events
-async function trackEvent(eventType, eventData) {
-  const event = {
-    id: uuidv4(),
-    event_type: eventType,
-    event_data: eventData,
-    created_at: new Date().toISOString()
-  }
-  
-  const { supabase, isSupabaseAvailable } = getSupabase()
-  
-  if (isSupabaseAvailable) {
-    await supabase.from('events').insert(event)
-  } else {
-    inMemoryStore.events.push(event)
-  }
-}
-
-// Export all HTTP methods
-export const GET = handleRoute
-export const POST = handleRoute
-export const PUT = handleRoute
-export const DELETE = handleRoute
-export const PATCH = handleRoute
