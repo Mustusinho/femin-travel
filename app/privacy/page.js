@@ -1,5 +1,76 @@
 import TrustPage from '@/components/layout/TrustPage'
-import {pageMetadata} from '@/lib/metadata'
-import {readConfig} from '@/lib/config.mjs'
-export const metadata=pageMetadata('Privacy Policy','What FeminTravel collects and why.','/privacy')
-export default function Privacy(){const c=readConfig();return <TrustPage title="Privacy Policy" intro="This page describes the application?s data handling. Optional features are available only when configured."><h2>Trip planning</h2><p>We process destination, dates and travel preferences to generate your plan. The browser keeps a draft in session storage on this tab. Optional passport constraints are sent for generation but are not saved with a shared trip. Do not enter passport numbers or sensitive personal details.</p><h2>AI and hosting providers</h2><p>When AI is configured, trip choices and chat messages are sent to OpenAI to generate answers. The app is designed for Vercel hosting. When persistence is configured, Supabase stores kit requests, saved trips and optional product events. When email is configured, Resend processes email recipients and messages. These services have their own data processing policies; actual deployment settings govern provider retention.</p><h2>Saved trips</h2><p>Saving is optional. Saved plans and non-sensitive preferences are accessible to anyone holding their opaque link for up to 30 days. Do not share private details in a plan. Links expire even before scheduled database cleanup runs.</p><h2>Kit requests and contact</h2><p>Kit requests store your name, email, consent time and request source when persistence is available. A checked option requests a one-time email; we do not automatically subscribe you to marketing. Contact messages are sent to the configured inbox when email delivery is enabled.</p><h2>Measurement and abuse protection</h2><p>Optional first-party events contain a limited action name, destination, provider and placement. They exclude names, email addresses and full trip preferences. Rate limits use salted, hashed request identifiers rather than raw IP addresses in the application database. Hosting providers may keep technical request logs.</p><h2>Retention and control</h2><p>The supplied cleanup job targets trips and events after 30 days, kit requests after 90 days and expired rate-limit records. The operator must schedule this job. Inbox and provider log retention are managed separately. You can clear local drafts and globe caches through browser settings.</p><h2>Requests about your data</h2>{c.contact?<p>Contact <a href={`mailto:${c.contact}`}>{c.contact}</a> to request access, correction or deletion. We may need to verify the request.</p>:<p>A verified privacy contact has not been configured on this deployment. Personal-data forms are unavailable until the deployment is configured.</p>}<p>We do not sell personal information. External booking sites have separate privacy terms. This policy is not a guarantee of legal compliance.</p></TrustPage>}
+import { pageMetadata } from '@/lib/metadata'
+import { readConfig } from '@/lib/config.mjs'
+export const metadata = pageMetadata(
+  'Privacy Policy',
+  'What FeminTravel collects and why.',
+  '/privacy'
+)
+export default function Privacy() {
+  const c = readConfig()
+  return (
+    <TrustPage
+      title="Privacy Policy"
+      intro="This page describes the application's data handling. Optional features are available only when configured."
+    >
+      <h2>Trip planning</h2>
+      <p>
+        We process destination, dates and travel preferences to generate your plan. The browser
+        keeps a draft in session storage on this tab. Optional passport constraints are sent for
+        generation but are not saved with a shared trip. Do not enter passport numbers or sensitive
+        personal details.
+      </p>
+      <h2>AI and hosting providers</h2>
+      <p>
+        When AI is configured, trip choices and chat messages are sent to OpenAI to generate
+        answers. The app is designed for Vercel hosting. When persistence is configured, Supabase
+        stores kit requests, saved trips and optional product events. When email is configured,
+        Resend processes email recipients and messages. These services have their own data
+        processing policies; actual deployment settings govern provider retention.
+      </p>
+      <h2>Saved trips</h2>
+      <p>
+        Saving is optional. Saved plans and non-sensitive preferences are accessible to anyone
+        holding their opaque link for up to 30 days. Do not share private details in a plan. Links
+        expire even before scheduled database cleanup runs.
+      </p>
+      <h2>Kit requests and contact</h2>
+      <p>
+        Kit requests store your name, email, consent time and request source when persistence is
+        available. A checked option requests a one-time email; we do not automatically subscribe you
+        to marketing. Contact messages are sent to the configured inbox when email delivery is
+        enabled.
+      </p>
+      <h2>Measurement and abuse protection</h2>
+      <p>
+        Optional first-party events contain a limited action name, destination, provider and
+        placement. They exclude names, email addresses and full trip preferences. Rate limits use
+        salted, hashed request identifiers rather than raw IP addresses in the application database.
+        Hosting providers may keep technical request logs.
+      </p>
+      <h2>Retention and control</h2>
+      <p>
+        The supplied cleanup job targets trips and events after 30 days, kit requests after 90 days
+        and expired rate-limit records. The operator must schedule this job. Inbox and provider log
+        retention are managed separately. You can clear local drafts and globe caches through
+        browser settings.
+      </p>
+      <h2>Requests about your data</h2>
+      {c.contact ? (
+        <p>
+          Contact <a href={`mailto:${c.contact}`}>{c.contact}</a> to request access, correction or
+          deletion. We may need to verify the request.
+        </p>
+      ) : (
+        <p>
+          A verified privacy contact has not been configured on this deployment. Personal-data forms
+          are unavailable until the deployment is configured.
+        </p>
+      )}
+      <p>
+        We do not sell personal information. External booking sites have separate privacy terms.
+        This policy is not a guarantee of legal compliance.
+      </p>
+    </TrustPage>
+  )
+}

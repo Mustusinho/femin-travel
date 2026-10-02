@@ -1,8 +1,178 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import {destinations} from '@/lib/destinations'
+import { destinations } from '@/lib/destinations'
 import DestinationCard from '@/components/DestinationCard'
 import LeadCapture from '@/components/LeadCapture'
-import {pageMetadata} from '@/lib/metadata'
-export const metadata=pageMetadata('Thoughtful trips, beautifully planned','AI-powered travel planning for women and friends. Turn a trip idea into an itinerary and practical preparation.','/')
-export default function Home(){return <main id="main-content"><section className="home-hero"><div><p className="eyebrow">For women and friends, wherever you?re headed</p><h1>Thoughtful trips.<br/><span>Beautifully planned.</span></h1><p>A little clarity before you go. Bring your itinerary, arrival strategy and practical safety preparation together in one place.</p><div className="flex flex-wrap gap-3 mt-7"><Link href="/plan" className="btn-primary">Plan My Trip</Link><Link href="/globe" className="btn-secondary">Explore Globe</Link></div><p className="hero-note">AI planning assistance ? No safety scores ? No live-price promises</p></div><div className="hero-editorial"><div className="hero-photo"><Image src={destinations.find(d=>d.slug==='lisbon').image} alt="Lisbon rooftops and city scenery" fill priority sizes="(max-width:900px) 90vw, 560px" className="object-cover"/></div><div className="hero-caption"><p className="eyebrow">A good journey starts before arrival</p><p>Less guesswork.<br/>More room to explore.</p><Link href="/plan?destination=Lisbon">Plan a Lisbon trip ?</Link></div></div></section><section className="home-section"><div className="section-heading"><div><p className="eyebrow">From idea to itinerary</p><h2>A plan that makes sense for you.</h2></div><p>Choose your dates, companions, pace and interests. Keep the practical details beside the inspiring ones.</p></div><div className="how-grid">{[['01','Tell us what matters','A few steps capture your destination, budget, interests and planning preferences.'],['02','Shape your days','Receive an itinerary when AI is available, or a clearly labelled preparation checklist.'],['03','Review, then book','Check current information, compare provider options and save a recovery link when storage is enabled.']].map(([n,title,copy])=><article key={n}><span>{n}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section><section className="home-section"><div className="section-heading"><div><p className="eyebrow">A few places to begin</p><h2>Find a destination that draws you in.</h2></div><Link href="/destinations" className="underline text-sm">All destinations ?</Link></div><div className="destination-grid">{destinations.slice(0,3).map(d=><DestinationCard key={d.slug} destination={d}/>)}</div></section><section className="home-section"><div className="methodology"><div><p className="eyebrow">Confidence comes from preparation</p><h2>Helpful guidance.<br/>Honest boundaries.</h2><Link href="/about" className="underline inline-block mt-5">How FeminTravel works ?</Link></div><div>{[['AI, with context','Suggestions reflect your choices. They can be incomplete and are not verified local intelligence.'],['Safety, without a score','Arrival arrangements, transport choices and practical checklists help you prepare. We don?t rate your safety.'],['Check what changes','Visa rules, advisories, prices and availability need current official checks.'],['Clear commercial links','Provider searches and configured affiliate links are labelled. A click is never described as a booking.']].map(([title,copy])=><article key={title}><h3>{title}</h3><p>{copy}</p></article>)}</div></div></section><section className="home-section"><LeadCapture/></section><section className="home-section"><div className="guide-promo"><div><p className="eyebrow">Travel guides</p><h2>Small details. Better prepared trips.</h2><p>Practical reading on arrival planning, packing and budgets.</p></div><Link href="/blog" className="btn-secondary">Read the guides</Link></div></section><section className="home-final"><p className="eyebrow">Start with the trip you have in mind</p><h2>Your next journey, thoughtfully planned.</h2><Link href="/plan" className="btn-primary inline-block mt-6">Plan My Trip</Link></section></main>}
+import { pageMetadata } from '@/lib/metadata'
+export const metadata = pageMetadata(
+  'Thoughtful trips, beautifully planned',
+  'AI-powered travel planning for women and friends. Turn a trip idea into an itinerary and practical preparation.',
+  '/'
+)
+export default function Home() {
+  return (
+    <main id="main-content">
+      <section className="home-hero">
+        <div>
+          <p className="eyebrow">For women and friends, wherever you’re headed</p>
+          <h1>
+            Thoughtful trips.
+            <br />
+            <span>Beautifully planned.</span>
+          </h1>
+          <p>
+            A little clarity before you go. Bring your itinerary, arrival strategy and practical
+            safety preparation together in one place.
+          </p>
+          <div className="flex flex-wrap gap-3 mt-7">
+            <Link href="/plan" className="btn-primary">
+              Plan My Trip
+            </Link>
+            <Link href="/globe" className="btn-secondary">
+              Explore Globe
+            </Link>
+          </div>
+          <p className="hero-note">
+            AI planning assistance · No safety scores · No live-price promises
+          </p>
+        </div>
+        <div className="hero-editorial">
+          <div className="hero-photo">
+            <Image
+              src={destinations.find((d) => d.slug === 'lisbon').image}
+              alt="Lisbon rooftops and city scenery"
+              fill
+              priority
+              sizes="(max-width:900px) 90vw, 560px"
+              className="object-cover"
+            />
+          </div>
+          <div className="hero-caption">
+            <p className="eyebrow">A good journey starts before arrival</p>
+            <p>
+              Less guesswork.
+              <br />
+              More room to explore.
+            </p>
+            <Link href="/plan?destination=Lisbon">Plan a Lisbon trip →</Link>
+          </div>
+        </div>
+      </section>
+      <section className="home-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">From idea to itinerary</p>
+            <h2>A plan that makes sense for you.</h2>
+          </div>
+          <p>
+            Choose your dates, companions, pace and interests. Keep the practical details beside the
+            inspiring ones.
+          </p>
+        </div>
+        <div className="how-grid">
+          {[
+            [
+              '01',
+              'Tell us what matters',
+              'A few steps capture your destination, budget, interests and planning preferences.'
+            ],
+            [
+              '02',
+              'Shape your days',
+              'Receive an itinerary when AI is available, or a clearly labelled preparation checklist.'
+            ],
+            [
+              '03',
+              'Review, then book',
+              'Check current information, compare provider options and save a recovery link when storage is enabled.'
+            ]
+          ].map(([n, title, copy]) => (
+            <article key={n}>
+              <span>{n}</span>
+              <h3>{title}</h3>
+              <p>{copy}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="home-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">A few places to begin</p>
+            <h2>Find a destination that draws you in.</h2>
+          </div>
+          <Link href="/destinations" className="underline text-sm">
+            All destinations →
+          </Link>
+        </div>
+        <div className="destination-grid">
+          {destinations.slice(0, 3).map((d) => (
+            <DestinationCard key={d.slug} destination={d} />
+          ))}
+        </div>
+      </section>
+      <section className="home-section">
+        <div className="methodology">
+          <div>
+            <p className="eyebrow">Confidence comes from preparation</p>
+            <h2>
+              Helpful guidance.
+              <br />
+              Honest boundaries.
+            </h2>
+            <Link href="/about" className="underline inline-block mt-5">
+              How FeminTravel works →
+            </Link>
+          </div>
+          <div>
+            {[
+              [
+                'AI, with context',
+                'Suggestions reflect your choices. They can be incomplete and are not verified local intelligence.'
+              ],
+              [
+                'Safety, without a score',
+                'Arrival arrangements, transport choices and practical checklists help you prepare. We don’t rate your safety.'
+              ],
+              [
+                'Check what changes',
+                'Visa rules, advisories, prices and availability need current official checks.'
+              ],
+              [
+                'Clear commercial links',
+                'Provider searches and configured affiliate links are labelled. A click is never described as a booking.'
+              ]
+            ].map(([title, copy]) => (
+              <article key={title}>
+                <h3>{title}</h3>
+                <p>{copy}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="home-section">
+        <LeadCapture />
+      </section>
+      <section className="home-section">
+        <div className="guide-promo">
+          <div>
+            <p className="eyebrow">Travel guides</p>
+            <h2>Small details. Better prepared trips.</h2>
+            <p>Practical reading on arrival planning, packing and budgets.</p>
+          </div>
+          <Link href="/blog" className="btn-secondary">
+            Read the guides
+          </Link>
+        </div>
+      </section>
+      <section className="home-final">
+        <p className="eyebrow">Start with the trip you have in mind</p>
+        <h2>Your next journey, thoughtfully planned.</h2>
+        <Link href="/plan" className="btn-primary inline-block mt-6">
+          Plan My Trip
+        </Link>
+      </section>
+    </main>
+  )
+}

@@ -1,12 +1,20 @@
 import Link from 'next/link'
 import {
-  ShieldCheck, MapPin, Luggage, DollarSign, PhoneCall,
-  CheckSquare, ArrowRight, Globe, BookOpen,
+  ShieldCheck,
+  MapPin,
+  Luggage,
+  DollarSign,
+  PhoneCall,
+  CheckSquare,
+  ArrowRight,
+  Globe,
+  BookOpen
 } from 'lucide-react'
 
 export const metadata = {
   title: 'Free Free Solo Travel Planning Kit — FeminTravel',
-  description: 'Your complete solo travel kit: safety checklists, packing lists, budget prep, and emergency planning.',
+  description:
+    'Your complete solo travel kit: safety checklists, packing lists, budget prep, and emergency planning.'
 }
 
 const checklists = [
@@ -26,8 +34,8 @@ const checklists = [
       'Set up international data — eSIM, roaming plan, or local SIM plan',
       'Download offline maps for your destination (Google Maps or Maps.me)',
       'Save photo copies of passport, insurance, and cards to secure cloud storage',
-      'Research your destination\'s emergency number (112 or local equivalent)',
-    ],
+      "Research your destination's emergency number (112 or local equivalent)"
+    ]
   },
   {
     id: 'arrival',
@@ -44,8 +52,8 @@ const checklists = [
       'Identify the nearest hospital, clinic, or pharmacy to your accommodation',
       'Connect to working SIM or wifi before leaving the airport',
       'Withdraw local cash if needed (airport ATM is usually safe)',
-      'Confirm that your backup contacts know you\'ve arrived safely',
-    ],
+      "Confirm that your backup contacts know you've arrived safely"
+    ]
   },
   {
     id: 'packing',
@@ -60,13 +68,13 @@ const checklists = [
       'Layers — temperature varies more than forecasts suggest',
       'Crossbody or anti-theft bag for daily use',
       'Portable charger / power bank (10,000mAh+)',
-      'Universal travel adapter for your destination\'s plug type',
+      "Universal travel adapter for your destination's plug type",
       'Personal alarm (small keychain type)',
       'Small first aid kit: plasters, pain relief, antidiarrheal',
       'Backup payment card stored separately from main wallet',
       'Headphones for transport and focus',
-      'Lightweight packable rain layer',
-    ],
+      'Lightweight packable rain layer'
+    ]
   },
   {
     id: 'budget',
@@ -83,8 +91,8 @@ const checklists = [
       'Research tipping customs for your destination',
       'Set aside an emergency buffer — at least 15–20% above your planned total',
       'Research which local ATMs are safe and fee-free for your card',
-      'Know your card\'s foreign transaction fees before you go',
-    ],
+      "Know your card's foreign transaction fees before you go"
+    ]
   },
   {
     id: 'emergency',
@@ -101,19 +109,22 @@ const checklists = [
       'Your own blood type noted on your phone lock screen or info card',
       'Any allergy or medical info in the local language (use a translation app)',
       'Two trusted home contacts who have your itinerary and accommodation details',
-      'Hotel or host\'s phone number saved offline',
-    ],
-  },
+      "Hotel or host's phone number saved offline"
+    ]
+  }
 ]
 
 const tripStarter = [
-  { label: 'Choose your base neighborhood', detail: 'Central, well-reviewed, good transport links' },
+  {
+    label: 'Choose your base neighborhood',
+    detail: 'Central, well-reviewed, good transport links'
+  },
   { label: 'Plan your airport arrival', detail: 'Know your route before you land' },
   { label: 'Save emergency numbers', detail: 'Local police, hospital, embassy' },
   { label: 'Prepare backup payment', detail: 'Second card stored separately' },
   { label: 'Download offline map', detail: 'Google Maps or Maps.me offline area' },
   { label: 'Check local customs', detail: 'Dress, tipping, etiquette basics' },
-  { label: 'Share itinerary', detail: 'Send to someone trusted at home' },
+  { label: 'Share itinerary', detail: 'Send to someone trusted at home' }
 ]
 
 function ChecklistCard({ checklist }) {
@@ -125,7 +136,9 @@ function ChecklistCard({ checklist }) {
           <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
         <div>
-          <h2 className="font-['Playfair_Display'] font-bold text-gray-900 text-lg leading-tight">{title}</h2>
+          <h2 className="font-['Playfair_Display'] font-bold text-gray-900 text-lg leading-tight">
+            {title}
+          </h2>
           <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
         </div>
       </div>
@@ -151,7 +164,10 @@ export default function FreeKitPage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-[hsl(346,74%,92%)] via-[hsl(300,40%,96%)] to-[hsl(270,50%,92%)] px-4 pt-8 pb-12">
         <div className="max-w-2xl mx-auto">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[hsl(346,74%,45%)] hover:underline mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-[hsl(346,74%,45%)] hover:underline mb-6"
+          >
             ← Back to FeminTravel
           </Link>
           <div className="flex items-center gap-3 mb-3">
@@ -162,11 +178,14 @@ export default function FreeKitPage() {
               <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
                 Free Solo Travel Planning Kit
               </h1>
-              <p className="text-[hsl(346,74%,45%)] text-sm font-medium">Your free planning resource</p>
+              <p className="text-[hsl(346,74%,45%)] text-sm font-medium">
+                Your free planning resource
+              </p>
             </div>
           </div>
           <p className="text-gray-600 max-w-lg leading-relaxed">
-            Five practical checklists to plan, pack, and arrive safely — for any destination worldwide. Tick each item as you go.
+            Five practical checklists to plan, pack, and arrive safely — for any destination
+            worldwide. Tick each item as you go.
           </p>
         </div>
       </div>
@@ -208,8 +227,9 @@ export default function FreeKitPage() {
         </div>
 
         {/* Disclaimer */}
-        <p className="text-xs text-gray-400 text-center px-2 leading-relaxed">
-          These checklists are practical planning guides. Always verify entry requirements, visa rules, and advisories with official government and embassy sources before travel.
+        <p className="text-xs text-gray-600 text-center px-2 leading-relaxed">
+          These checklists are practical planning guides. Always verify entry requirements, visa
+          rules, and advisories with official government and embassy sources before travel.
         </p>
 
         {/* CTAs */}

@@ -1,247 +1,167 @@
-"use client";
+'use client'
 
-import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import {
-  Search, X, Globe as GlobeIcon, MapPin, Shield,
-  Luggage, DollarSign, MessageCircle, Send, Sparkles,
-  ArrowLeft, AlertTriangle, Clock, CheckCircle, ArrowRight, Star, HelpCircle,
-} from "lucide-react";
+  Search,
+  X,
+  Globe as GlobeIcon,
+  MapPin,
+  Shield,
+  Luggage,
+  DollarSign,
+  MessageCircle,
+  Send,
+  Sparkles,
+  ArrowLeft,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
+  ArrowRight,
+  Star,
+  HelpCircle
+} from 'lucide-react'
 
-import BookingCTAs from "../../components/BookingCTAs";
+import BookingCTAs from '../../components/BookingCTAs'
+import { fallbackBrief } from '@/lib/brief-fallback'
+import { trackEvent as recordProductEvent } from '@/lib/events'
 
 // ─── iOS Safari WebGPU polyfill ───────────────────────────────────────────────
 function ensureWebGpuEnums() {
-  if (typeof window === "undefined") return;
-  window.GPUShaderStage ??= { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 };
+  if (typeof window === 'undefined') return
+  window.GPUShaderStage ??= { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 }
   window.GPUBufferUsage ??= {
-    MAP_READ: 1, MAP_WRITE: 2, COPY_SRC: 4, COPY_DST: 8,
-    INDEX: 16, VERTEX: 32, UNIFORM: 64, STORAGE: 128, INDIRECT: 256, QUERY_RESOLVE: 512,
-  };
-  window.GPUMapMode ??= { READ: 1, WRITE: 2 };
+    MAP_READ: 1,
+    MAP_WRITE: 2,
+    COPY_SRC: 4,
+    COPY_DST: 8,
+    INDEX: 16,
+    VERTEX: 32,
+    UNIFORM: 64,
+    STORAGE: 128,
+    INDIRECT: 256,
+    QUERY_RESOLVE: 512
+  }
+  window.GPUMapMode ??= { READ: 1, WRITE: 2 }
   window.GPUTextureUsage ??= {
-    COPY_SRC: 1, COPY_DST: 2, TEXTURE_BINDING: 4, STORAGE_BINDING: 8, RENDER_ATTACHMENT: 16,
-  };
+    COPY_SRC: 1,
+    COPY_DST: 2,
+    TEXTURE_BINDING: 4,
+    STORAGE_BINDING: 8,
+    RENDER_ATTACHMENT: 16
+  }
 }
 
 function hasWebGL() {
   try {
-    const canvas = document.createElement("canvas");
-    return !!(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"));
-  } catch { return false; }
+    const canvas = document.createElement('canvas')
+    return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+  } catch {
+    return false
+  }
 }
 
 // ─── Place name normalization ─────────────────────────────────────────────────
-const COUNTRY_MAP = {
-  'россия': 'Russia', 'рф': 'Russia', 'україна': 'Ukraine', 'беларусь': 'Belarus',
-  'казахстан': 'Kazakhstan', 'грузия': 'Georgia', 'türkiye': 'Turkey', 'deutschland': 'Germany',
-  'españa': 'Spain', 'italia': 'Italy', '中国': 'China', '日本': 'Japan', '한국': 'South Korea',
-  'brasil': 'Brazil', 'nederland': 'Netherlands', 'polska': 'Poland',
-  'österreich': 'Austria', 'schweiz': 'Switzerland', 'suisse': 'Switzerland',
-};
-
-function hasNonLatin(str) {
-  return /[^ -ɏḀ-ỿ\s\d.,\-'()&/]/.test(str || '');
-}
-
-function isAdminName(str) {
-  const s = (str || '').toLowerCase();
-  return /\b(район|rayon|district|region|oblast|krai|municipality|prefecture|county|gouvernorat|shire|province|departamento)\b/.test(s);
-}
-
-function normalizePlaceName({ name, country }) {
-  const rawName = name || '';
-  const rawCountry = country || '';
-  const mappedCountry = COUNTRY_MAP[rawCountry.toLowerCase()] || rawCountry;
-  const cleanCountry = hasNonLatin(mappedCountry)
-    ? (COUNTRY_MAP[rawCountry.toLowerCase()] || 'Unknown')
-    : mappedCountry;
-  const nameIsGeneric = !rawName || hasNonLatin(rawName) || isAdminName(rawName) || /^Location \(/.test(rawName);
-
-  if (nameIsGeneric) {
-    return {
-      displayName: 'Selected area',
-      subtitle: cleanCountry && cleanCountry !== 'Unknown' ? cleanCountry : 'Remote area',
-      country: cleanCountry, isRemoteArea: true, confidence: 'low',
-    };
-  }
+function normalizePlaceName({ name, country, planningEligible = true }) {
   return {
-    displayName: rawName,
-    subtitle: cleanCountry && cleanCountry !== 'Unknown' ? cleanCountry : '',
-    country: cleanCountry, isRemoteArea: false,
-    confidence: rawName.length > 2 ? 'high' : 'medium',
-  };
+    displayName: name || 'Selected area',
+    subtitle: country || '',
+    country: country || '',
+    isRemoteArea: !planningEligible
+  }
 }
 
-function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
-function normalize(s) { return (s || "").toLowerCase().trim(); }
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n))
+}
+function normalize(s) {
+  return (s || '').toLowerCase().trim()
+}
 
 // ─── Fallback brief ───────────────────────────────────────────────────────────
-function fallbackBrief(placeName = "this place", country = "") {
-  return {
-    overview: `${placeName}${country ? `, ${country}` : ""} can be a great destination. Here are safe, practical ideas while we load your full brief.`,
-    best_time_to_visit: "Generally: spring and fall are comfortable with fewer crowds (depends on the region).",
-    safety_tips: [
-      "Stick to well-lit areas at night and plan routes in advance.",
-      "Use official taxis/rideshare and verify license/plate before entering.",
-      "Keep valuables close; avoid displaying expensive items in crowded areas.",
-      "Share your live location or itinerary with a trusted contact.",
-      "Trust your instincts — if something feels off, leave.",
-    ],
-    neighborhoods_to_stay: [
-      "Central areas near main attractions — convenient and lively",
-      "Near transit hubs — fewer late walks",
-      "Well-reviewed areas with good lighting and activity",
-    ],
-    things_to_do: [
-      "Try a small-group walking tour",
-      "Explore local markets",
-      "Visit top museums/cultural sights",
-      "Book a day trip with reviews",
-      "Enjoy parks/scenic viewpoints",
-    ],
-    packing_list: [
-      "Comfortable shoes",
-      "Layers",
-      "Portable charger",
-      "Universal adapter",
-      "Small crossbody bag",
-      "Portable door lock",
-      "Personal alarm",
-    ],
-    budget_ranges: { low: "$50–80/day", mid: "$100–160/day", high: "$220+/day" },
-    transport_tips: [
-      "Download offline maps",
-      "Use day passes if available",
-      "Avoid empty stations late; choose busier routes",
-    ],
-    cultural_tips: [
-      "Learn a few key phrases",
-      "Check local dress norms for religious sites",
-      "Be mindful of photos in sensitive areas",
-    ],
-    quick_faq: {
-      visa: "Visa rules change often — verify official government sources.",
-      sim: "Airport kiosks or local carriers usually offer tourist eSIM/SIM.",
-      plugs: "Check plug type + voltage and bring an adapter.",
-      airport_to_city: "Compare: train, shuttle, official taxi, or rideshare based on time of arrival.",
-    },
-  };
-}
-
 // ─── Featured destinations ────────────────────────────────────────────────────
 const featuredDestinations = [
-  { id: "1", name: "Tokyo", country: "Japan", lat: 35.6762, lng: 139.6503, slug: "tokyo" },
-  { id: "2", name: "Paris", country: "France", lat: 48.8566, lng: 2.3522, slug: "paris" },
-  { id: "3", name: "Rome", country: "Italy", lat: 41.9028, lng: 12.4964, slug: "rome" },
-  { id: "4", name: "Bali", country: "Indonesia", lat: -8.4095, lng: 115.1889, slug: "bali" },
-  { id: "5", name: "Lisbon", country: "Portugal", lat: 38.7223, lng: -9.1393, slug: "lisbon" },
-  { id: "6", name: "New York", country: "USA", lat: 40.7128, lng: -74.006, slug: "new-york" },
-  { id: "7", name: "Barcelona", country: "Spain", lat: 41.3851, lng: 2.1734, slug: "barcelona" },
-  { id: "8", name: "Sydney", country: "Australia", lat: -33.8688, lng: 151.2093, slug: "sydney" },
-  { id: "9", name: "Cape Town", country: "South Africa", lat: -33.9249, lng: 18.4241, slug: "cape-town" },
-  { id: "10", name: "Reykjavik", country: "Iceland", lat: 64.1466, lng: -21.9426, slug: "reykjavik" },
-];
+  { id: '1', name: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503, slug: 'tokyo' },
+  { id: '2', name: 'Paris', country: 'France', lat: 48.8566, lng: 2.3522, slug: 'paris' },
+  { id: '3', name: 'Rome', country: 'Italy', lat: 41.9028, lng: 12.4964, slug: 'rome' },
+  { id: '4', name: 'Bali', country: 'Indonesia', lat: -8.4095, lng: 115.1889, slug: 'bali' },
+  { id: '5', name: 'Lisbon', country: 'Portugal', lat: 38.7223, lng: -9.1393, slug: 'lisbon' },
+  { id: '6', name: 'New York', country: 'USA', lat: 40.7128, lng: -74.006, slug: 'new-york' },
+  { id: '7', name: 'Barcelona', country: 'Spain', lat: 41.3851, lng: 2.1734, slug: 'barcelona' },
+  { id: '8', name: 'Sydney', country: 'Australia', lat: -33.8688, lng: 151.2093, slug: 'sydney' },
+  {
+    id: '9',
+    name: 'Cape Town',
+    country: 'South Africa',
+    lat: -33.9249,
+    lng: 18.4241,
+    slug: 'cape-town'
+  },
+  {
+    id: '10',
+    name: 'Reykjavik',
+    country: 'Iceland',
+    lat: 64.1466,
+    lng: -21.9426,
+    slug: 'reykjavik'
+  }
+]
 
 // ─── Trip context helpers ─────────────────────────────────────────────────────
-const STYLE_LABEL = { budget: 'Budget', comfortable: 'Comfortable', luxury: 'Luxury' };
-const TYPE_LABEL = { solo: 'Solo', friend: 'With friend', couple: 'Couple' };
-const WINDOW_LABEL = { soon: 'Soon', summer: 'This summer', winter: 'This winter', unsure: 'Not sure yet' };
-const CONFIDENCE_CONFIG = {
-  good:   { label: 'Good for solo planning', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-  medium: { label: 'Plan carefully',         bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   dot: 'bg-amber-500'   },
-  low:    { label: 'Needs extra research',   bg: 'bg-rose-50',    border: 'border-rose-200',    text: 'text-rose-700',    dot: 'bg-rose-500'    },
-};
-
+const STYLE_LABEL = { budget: 'Budget', comfortable: 'Comfortable', luxury: 'Luxury' }
+const TYPE_LABEL = { solo: 'Solo', friend: 'With friend', couple: 'Couple' }
+const WINDOW_LABEL = {
+  soon: 'Soon',
+  summer: 'This summer',
+  winter: 'This winter',
+  unsure: 'Not sure yet'
+}
 function getTripContextFromSearchParams(searchParams) {
   return {
-    style:  searchParams.get('style')  || null,
-    type:   searchParams.get('type')   || null,
-    window: searchParams.get('window') || null,
-  };
+    style: searchParams.get('style') || null,
+    type: searchParams.get('type') || null,
+    window: searchParams.get('window') || null
+  }
 }
 
-function getReadinessScore(destination) {
-  if (!destination || destination.isRemoteArea) return 45;
-  if (destination.confidence === 'high')   return 82;
-  if (destination.confidence === 'medium') return 68;
-  return 75;
-}
-
-function getConfidenceLevel(destination) {
-  if (destination?.isRemoteArea)           return 'low';
-  if (destination?.confidence === 'low')   return 'low';
-  if (destination?.confidence === 'medium') return 'medium';
-  return 'good';
-}
-
-// ─── ScoreDial (SVG) ──────────────────────────────────────────────────────────
-function ScoreDial({ score, size = 64 }) {
-  const r = (size / 2) - 5;
-  const circ = 2 * Math.PI * r;
-  const dash = circ * (score / 100);
-  const strokeColor = score >= 80 ? '#10b981' : score >= 65 ? '#f59e0b' : '#f43f5e';
-  const cx = size / 2;
-  return (
-    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#e5e7eb" strokeWidth="4.5" />
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke={strokeColor} strokeWidth="4.5"
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-base font-bold text-gray-900 leading-none">{score}</span>
-        <span className="text-[9px] text-gray-400 mt-0.5">/ 100</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── SectionLabel ─────────────────────────────────────────────────────────────
-function SectionLabel({ icon: Icon, label, color = "text-pink-400" }) {
+function SectionLabel({ icon: Icon, label, color = 'text-pink-400' }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       {Icon && <Icon className={`w-4 h-4 ${color}`} />}
       <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">{label}</p>
     </div>
-  );
+  )
 }
 
 // ─── PackingPrepChecklist (own state — MUST be defined outside DestinationPanel) ──
 function PackingPrepChecklist({ items }) {
-  const [checked, setChecked] = useState(new Set());
-  const toggle = useCallback((i) => {
-    setChecked(prev => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      return next;
-    });
-  }, []);
+  const [checked, setChecked] = useState(new Set())
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-2">
       {(items || []).map((item, i) => (
-        <li key={i}
-          onClick={() => toggle(i)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors select-none ${
-            checked.has(i) ? 'bg-emerald-50' : 'bg-gray-50 hover:bg-gray-100'
-          }`}
-        >
-          <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-            checked.has(i) ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'
-          }`}>
-            {checked.has(i) && <CheckCircle className="w-3 h-3 text-white" />}
-          </div>
-          <span className={`text-sm leading-snug transition-colors ${
-            checked.has(i) ? 'line-through text-gray-400' : 'text-gray-700'
-          }`}>{item}</span>
+        <li key={i}>
+          <label className="flex gap-3 items-start bg-gray-50 rounded-xl p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={checked.has(i)}
+              onChange={() =>
+                setChecked((prev) => {
+                  const next = new Set(prev)
+                  next.has(i) ? next.delete(i) : next.add(i)
+                  return next
+                })
+              }
+              className="mt-1 accent-pink-600"
+            />
+            <span>{item}</span>
+          </label>
         </li>
       ))}
     </ul>
-  );
+  )
 }
 
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
 function LoadingSkeleton() {
   return (
     <div className="p-5 space-y-3 animate-pulse">
@@ -253,49 +173,72 @@ function LoadingSkeleton() {
       <div className="h-4 bg-gray-200 rounded w-2/3" />
       <div className="h-16 bg-gray-200 rounded" />
     </div>
-  );
+  )
 }
 
 // ─── DestinationPanel ─────────────────────────────────────────────────────────
-function DestinationPanel({ destination, brief, isLoading, tripContext, onClose, onOpenChat, isMobile, onHeightPxChange }) {
-  const [vh, setVh] = useState(800);
-  const [heightPx, setHeightPx] = useState(0);
-  const draggingRef = useRef(false);
-  const startY = useRef(0);
-  const startH = useRef(0);
+function DestinationPanel({
+  destination,
+  brief,
+  isLoading,
+  tripContext,
+  onClose,
+  onOpenChat,
+  isMobile,
+  onHeightPxChange
+}) {
+  const [vh, setVh] = useState(800)
+  const closeRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  useEffect(() => {
+    const previous = document.activeElement
+    closeRef.current?.focus()
+    const key = (e) => {
+      if (e.key === 'Escape') onCloseRef.current()
+    }
+    document.addEventListener('keydown', key)
+    return () => {
+      document.removeEventListener('keydown', key)
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [destination?.name])
+  const [heightPx, setHeightPx] = useState(0)
+  const draggingRef = useRef(false)
+  const startY = useRef(0)
+  const startH = useRef(0)
 
   useEffect(() => {
-    const upd = () => setVh(window.innerHeight || 800);
-    upd();
-    window.addEventListener("resize", upd);
-    return () => window.removeEventListener("resize", upd);
-  }, []);
+    const upd = () => setVh(window.innerHeight || 800)
+    upd()
+    window.addEventListener('resize', upd)
+    return () => window.removeEventListener('resize', upd)
+  }, [])
 
   const snapPx = useMemo(
     () => [Math.round(vh * 0.4), Math.round(vh * 0.65), Math.round(vh * 0.9)],
     [vh]
-  );
+  )
 
   useEffect(() => {
-    if (isMobile) setHeightPx(snapPx[0]);
-  }, [isMobile, snapPx]);
+    if (isMobile) setHeightPx(snapPx[0])
+  }, [isMobile, snapPx])
 
   useEffect(() => {
-    if (!isMobile) return;
-    onHeightPxChange?.(heightPx);
-  }, [heightPx, isMobile, onHeightPxChange]);
+    if (!isMobile) return
+    onHeightPxChange?.(heightPx)
+  }, [heightPx, isMobile, onHeightPxChange])
 
-  const displayName = destination?.displayName || destination?.name;
-  const subtitle    = destination?.subtitle    || destination?.country;
-  const score       = getReadinessScore(destination);
-  const confLevel   = getConfidenceLevel(destination);
-  const confConfig  = CONFIDENCE_CONFIG[confLevel];
+  const displayName = destination?.displayName || destination?.name
+  const subtitle = destination?.subtitle || destination?.country
 
   const tripContextLine = [
-    tripContext?.style  && STYLE_LABEL[tripContext.style],
-    tripContext?.type   && TYPE_LABEL[tripContext.type],
-    tripContext?.window && WINDOW_LABEL[tripContext.window],
-  ].filter(Boolean).join(' · ');
+    tripContext?.style && STYLE_LABEL[tripContext.style],
+    tripContext?.type && TYPE_LABEL[tripContext.type],
+    tripContext?.window && WINDOW_LABEL[tripContext.window]
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   // Brief content — inline JSX (no inner function component, avoids unmount issue)
   const briefContent = brief ? (
@@ -363,7 +306,11 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
       {/* Watch-outs */}
       {brief.cultural_tips?.length > 0 && (
         <div className="px-5 py-4">
-          <SectionLabel icon={AlertTriangle} label="Watch-outs & cultural tips" color="text-amber-500" />
+          <SectionLabel
+            icon={AlertTriangle}
+            label="Watch-outs & cultural tips"
+            color="text-amber-500"
+          />
           <ul className="space-y-2">
             {brief.cultural_tips.map((tip, i) => (
               <li key={i} className="flex items-start gap-2.5 bg-amber-50 rounded-xl px-3 py-2.5">
@@ -389,11 +336,32 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
           <SectionLabel icon={DollarSign} label="Budget (per day)" color="text-emerald-500" />
           <div className="grid grid-cols-3 gap-2 mb-3">
             {[
-              { key: 'budget',      label: 'Budget',    value: brief.budget_ranges.low,  colors: 'bg-green-50 border-green-200 text-green-800',   highlight: tripContext?.style === 'budget'      },
-              { key: 'comfortable', label: 'Mid-range', value: brief.budget_ranges.mid,  colors: 'bg-blue-50 border-blue-200 text-blue-800',      highlight: tripContext?.style === 'comfortable' },
-              { key: 'luxury',      label: 'Luxury',    value: brief.budget_ranges.high, colors: 'bg-purple-50 border-purple-200 text-purple-800', highlight: tripContext?.style === 'luxury'      },
+              {
+                key: 'budget',
+                label: 'Budget',
+                value: brief.budget_ranges.low,
+                colors: 'bg-green-50 border-green-200 text-green-800',
+                highlight: tripContext?.style === 'budget'
+              },
+              {
+                key: 'comfortable',
+                label: 'Mid-range',
+                value: brief.budget_ranges.mid,
+                colors: 'bg-blue-50 border-blue-200 text-blue-800',
+                highlight: tripContext?.style === 'comfortable'
+              },
+              {
+                key: 'luxury',
+                label: 'Luxury',
+                value: brief.budget_ranges.high,
+                colors: 'bg-purple-50 border-purple-200 text-purple-800',
+                highlight: tripContext?.style === 'luxury'
+              }
             ].map(({ key, label, value, colors, highlight }) => (
-              <div key={key} className={`rounded-xl border p-3 ${colors} ${highlight ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}>
+              <div
+                key={key}
+                className={`rounded-xl border p-3 ${colors} ${highlight ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}
+              >
                 <p className="text-xs font-semibold leading-tight mb-1">{label}</p>
                 <p className="text-xs leading-tight">{value || '—'}</p>
               </div>
@@ -403,7 +371,8 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
             <ul className="space-y-1">
               {brief.transport_tips.map((tip, i) => (
                 <li key={i} className="text-xs text-gray-500 flex items-start gap-1.5">
-                  <span className="text-pink-400 mt-0.5 flex-shrink-0">•</span>{tip}
+                  <span className="text-pink-400 mt-0.5 flex-shrink-0">•</span>
+                  {tip}
                 </li>
               ))}
             </ul>
@@ -417,24 +386,29 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
           <SectionLabel icon={HelpCircle} label="Quick essentials" color="text-gray-400" />
           <div className="space-y-2">
             {[
-              { icon: '🛂', label: 'Visa & Entry',    value: brief.quick_faq.visa          },
-              { icon: '📱', label: 'SIM Card',        value: brief.quick_faq.sim           },
-              { icon: '🔌', label: 'Plugs',           value: brief.quick_faq.plugs         },
-              { icon: '✈️', label: 'Airport to City', value: brief.quick_faq.airport_to_city },
-            ].filter(f => f.value).map(({ icon, label, value }) => (
-              <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
-                <p className="text-xs font-semibold text-gray-800">{icon} {label}</p>
-                <p className="text-xs text-gray-600 mt-1 leading-relaxed">{value}</p>
-              </div>
-            ))}
+              { icon: '🛂', label: 'Visa & Entry', value: brief.quick_faq.visa },
+              { icon: '📱', label: 'SIM Card', value: brief.quick_faq.sim },
+              { icon: '🔌', label: 'Plugs', value: brief.quick_faq.plugs },
+              { icon: '✈️', label: 'Airport to City', value: brief.quick_faq.airport_to_city }
+            ]
+              .filter((f) => f.value)
+              .map(({ icon, label, value }) => (
+                <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                  <p className="text-xs font-semibold text-gray-800">
+                    {icon} {label}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{value}</p>
+                </div>
+              ))}
           </div>
         </div>
       )}
 
       {/* Disclaimer */}
       <div className="px-5 py-4">
-        <p className="text-xs text-gray-400 italic leading-relaxed">
-          AI guidance is a planning aid only. Always verify visa requirements, safety advisories, and entry rules through official government sources before travel.
+        <p className="text-xs text-gray-600 italic leading-relaxed">
+          AI guidance is a planning aid only. Always verify visa requirements, safety advisories,
+          and entry rules through official government sources before travel.
         </p>
       </div>
     </div>
@@ -442,15 +416,20 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
     <div className="px-5 py-8 text-center text-gray-500 text-sm">
       Failed to load travel brief. Please try again.
     </div>
-  );
+  )
 
   // ── Desktop panel ──
   if (!isMobile) {
     return (
-      <div className="fixed top-0 right-0 h-full w-[460px] bg-white shadow-2xl z-[90] overflow-hidden flex flex-col">
+      <div
+        role="region"
+        aria-label="Destination planning panel"
+        className="fixed top-[76px] right-0 h-[calc(100dvh-76px)] w-[420px] bg-white shadow-2xl z-[90] overflow-hidden flex flex-col"
+      >
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-pink-400 via-pink-300 to-purple-300 px-5 pt-5 pb-4 flex-shrink-0">
+        <div className="relative bg-gradient-to-br from-[#9b4c71] via-[#a86686] to-[#7b628d] px-5 pt-5 pb-4 flex-shrink-0">
           <button
+            ref={closeRef}
             onClick={onClose}
             className="absolute top-4 right-4 w-8 h-8 bg-white/25 rounded-full flex items-center justify-center hover:bg-white/40 transition-colors"
             aria-label="Close panel"
@@ -458,7 +437,7 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
             <X className="w-5 h-5 text-white" />
           </button>
           <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-2">
-            Travel Intelligence Brief
+            Travel planning notes
           </p>
           {isLoading ? (
             <div className="animate-pulse">
@@ -469,31 +448,44 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
             <>
               <div className="flex items-start gap-3 mb-2.5">
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-serif text-2xl font-bold text-white leading-tight">{displayName}</h2>
+                  <h2 className="font-serif text-2xl font-bold text-white leading-tight">
+                    {displayName}
+                  </h2>
                   {subtitle && <p className="text-white/85 text-sm mt-0.5">{subtitle}</p>}
                 </div>
-                <ScoreDial score={score} />
               </div>
               {tripContextLine && (
                 <p className="text-white/75 text-xs font-medium mb-2.5">{tripContextLine}</p>
               )}
-              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${confConfig.bg} ${confConfig.border} ${confConfig.text}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${confConfig.dot}`} />
-                {confConfig.label}
-              </span>
+              <p className="text-xs text-gray-700 bg-white/90 rounded-xl p-2 mt-2">
+                Planning assistance · verify before booking
+              </p>
             </>
           )}
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {isLoading ? <LoadingSkeleton /> : briefContent}
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-100 bg-gray-50 px-4 py-4 flex-shrink-0">
           <p className="text-xs text-gray-500 text-center mb-3">Plan your trip</p>
-          <BookingCTAs destination={destination} compact />
+          {!destination?.isRemoteArea && (
+            <>
+              <Link
+                href={`/plan?destination=${encodeURIComponent(destination.name)}`}
+                className="btn-primary block text-center mb-3"
+              >
+                Plan this trip
+              </Link>
+              <BookingCTAs destination={destination} compact placement="globe" />
+            </>
+          )}
           {onOpenChat && (
             <button
               onClick={onOpenChat}
@@ -506,49 +498,57 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
           )}
         </div>
       </div>
-    );
+    )
   }
 
   // ── Mobile bottom sheet ──
   const onHandlePointerDown = (e) => {
-    draggingRef.current = true;
-    startY.current = e.clientY;
-    startH.current = heightPx;
-    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {}
-  };
+    draggingRef.current = true
+    startY.current = e.clientY
+    startH.current = heightPx
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    } catch {}
+  }
   const onHandlePointerMove = (e) => {
-    if (!draggingRef.current) return;
-    const delta = startY.current - e.clientY;
-    setHeightPx(clamp(startH.current + delta, 240, snapPx[2]));
-  };
+    if (!draggingRef.current) return
+    const delta = startY.current - e.clientY
+    setHeightPx(clamp(startH.current + delta, 240, snapPx[2]))
+  }
   const onHandlePointerUp = () => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
+    if (!draggingRef.current) return
+    draggingRef.current = false
     const nearest = snapPx.reduce(
       (best, v) => (Math.abs(v - heightPx) < Math.abs(best - heightPx) ? v : best),
       snapPx[0]
-    );
-    setHeightPx(nearest);
-  };
+    )
+    setHeightPx(nearest)
+  }
 
   return (
     <div
+      role="region"
+      aria-label="Destination planning panel"
       style={{ height: heightPx }}
       className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-[90] flex flex-col overflow-hidden transition-[height] duration-200 ease-out"
     >
       {/* Drag handle */}
-      <div
+      <button
+        type="button"
+        aria-label="Expand or collapse destination panel"
+        onClick={() => setHeightPx(heightPx < snapPx[1] ? snapPx[1] : snapPx[0])}
         className="py-3 flex-shrink-0"
-        style={{ touchAction: "none" }}
+        style={{ touchAction: 'none' }}
         onPointerDown={onHandlePointerDown}
         onPointerMove={onHandlePointerMove}
         onPointerUp={onHandlePointerUp}
         onPointerCancel={onHandlePointerUp}
       >
-        <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto" />
-      </div>
+        <span className="block w-12 h-1.5 bg-gray-300 rounded-full mx-auto" />
+      </button>
 
       <button
+        ref={closeRef}
         onClick={onClose}
         className="absolute top-3 right-4 w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center z-10"
         aria-label="Close panel"
@@ -558,8 +558,8 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
 
       {/* Header */}
       <div className="px-4 pb-3 flex-shrink-0">
-        <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-1">
-          Travel Intelligence Brief
+        <p className="text-gray-600 text-xs font-semibold uppercase tracking-wide mb-1">
+          Travel planning notes
         </p>
         {isLoading ? (
           <div className="animate-pulse">
@@ -573,30 +573,43 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
                 <h2 className="font-serif text-xl font-bold leading-tight">{displayName}</h2>
                 {subtitle && <p className="text-gray-500 text-sm mt-0.5">{subtitle}</p>}
               </div>
-              <ScoreDial score={score} size={52} />
             </div>
-            {tripContextLine && (
-              <p className="text-gray-500 text-xs mt-1.5">{tripContextLine}</p>
-            )}
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full mt-2 border ${confConfig.bg} ${confConfig.border} ${confConfig.text}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${confConfig.dot}`} />
-              {confConfig.label}
-            </span>
+            {tripContextLine && <p className="text-gray-500 text-xs mt-1.5">{tripContextLine}</p>}
+            <p className="text-xs text-gray-700 bg-white/90 rounded-xl p-2 mt-2">
+              Planning assistance · verify before booking
+            </p>
           </>
         )}
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {isLoading ? <LoadingSkeleton /> : briefContent}
+        {!destination?.isRemoteArea && (
+          <div className="px-4 py-4">
+            <BookingCTAs destination={destination} compact placement="globe" />
+          </div>
+        )}
       </div>
 
       {/* Footer */}
       <div
         className="border-t border-gray-100 p-3 bg-gray-50 flex-shrink-0"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
       >
-        <BookingCTAs destination={destination} compact />
+        {!destination?.isRemoteArea && (
+          <>
+            <Link
+              href={`/plan?destination=${encodeURIComponent(destination.name)}`}
+              className="btn-primary block text-center mb-3"
+            >
+              Plan this trip
+            </Link>
+          </>
+        )}
         {onOpenChat && (
           <button
             onClick={onOpenChat}
@@ -608,78 +621,89 @@ function DestinationPanel({ destination, brief, isLoading, tripContext, onClose,
         )}
       </div>
     </div>
-  );
+  )
 }
 
 // ─── Chat Widget ──────────────────────────────────────────────────────────────
 function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, openTrigger }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false)
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const messagesEndRef = useRef(null)
 
-  const [vh, setVh] = useState(800);
+  const [vh, setVh] = useState(800)
   useEffect(() => {
-    const upd = () => setVh(window.innerHeight || 800);
-    upd();
-    window.addEventListener("resize", upd);
-    return () => window.removeEventListener("resize", upd);
-  }, []);
+    const upd = () => setVh(window.innerHeight || 800)
+    upd()
+    window.addEventListener('resize', upd)
+    return () => window.removeEventListener('resize', upd)
+  }, [])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isOpen]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isOpen])
 
   // External open trigger (from panel "Ask AI" button)
   useEffect(() => {
-    if (openTrigger > 0) setIsOpen(true);
-  }, [openTrigger]);
+    if (openTrigger > 0) setIsOpen(true)
+  }, [openTrigger])
 
-  const quickSuggestions = ["Is it safe?", "What to pack?", "Budget tips?", "Best time?"];
+  const quickSuggestions = ['Is it safe?', 'What to pack?', 'Budget tips?', 'Best time?']
 
   const sendMessage = async (text) => {
-    if (!text.trim()) return;
-    const userMessage = { role: "user", content: text };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
-    setInput("");
-    setIsLoading(true);
+    if (!text.trim() || isLoading) return
+    const userMessage = { role: 'user', content: text }
+    const nextMessages = [...messages, userMessage]
+    setMessages(nextMessages)
+    setInput('')
+    setIsLoading(true)
     try {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages, destinationContext }),
-      });
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data?.response || "Sorry—try again." }]);
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nextMessages.slice(-10), destinationContext })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'The assistant is unavailable. Please retry.')
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: data?.response || 'Sorry—try again.' }
+      ])
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble. Please try again!" }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: "I'm having trouble. Please try again!" }
+      ])
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
-  const baseRight = 24;
-  const desktopPanelW = 460;
-  const dynamicRight = !isMobile && panelOpen ? desktopPanelW + baseRight : baseRight;
-
-  let dynamicBottom = 24;
-  if (isMobile && panelOpen) {
-    const raw = (panelHeightPx || 0) + 16;
-    dynamicBottom = clamp(raw, 16, vh - 180);
   }
-  const chatWindowBottom = clamp(dynamicBottom + 72, 96, vh - 120);
+
+  const baseRight = 24
+  const desktopPanelW = 460
+  const dynamicRight = !isMobile && panelOpen ? desktopPanelW + baseRight : baseRight
+
+  let dynamicBottom = 24
+  if (isMobile && panelOpen) {
+    const raw = (panelHeightPx || 0) + 16
+    dynamicBottom = clamp(raw, 16, vh - 180)
+  }
+  const chatWindowBottom = clamp(dynamicBottom + 72, 96, vh - 120)
 
   return (
     <>
       <button
-        onClick={() => setIsOpen(v => !v)}
+        onClick={() => setIsOpen((v) => !v)}
         style={{ right: dynamicRight, bottom: dynamicBottom }}
         className="fixed z-[110] w-14 h-14 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
         aria-label="Open chat"
       >
-        {isOpen ? <X className="w-6 h-6 text-white" /> : <MessageCircle className="w-6 h-6 text-white" />}
+        {isOpen ? (
+          <X className="w-6 h-6 text-white" />
+        ) : (
+          <MessageCircle className="w-6 h-6 text-white" />
+        )}
       </button>
 
       {isOpen && (
@@ -690,27 +714,36 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
           <div className="bg-gradient-to-r from-pink-300 to-purple-300 p-4">
             <h3 className="font-serif text-lg font-semibold">Travel Assistant</h3>
             <p className="text-sm text-gray-700">
-              {destinationContext?.name ? `Helping with ${destinationContext.displayName || destinationContext.name}` : "Ask me anything!"}
+              {destinationContext?.name
+                ? `Helping with ${destinationContext.displayName || destinationContext.name}`
+                : 'Ask me anything!'}
             </p>
           </div>
 
           <div
             className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[150px] max-h-[280px] overscroll-contain"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {messages.length === 0 && (
               <div className="text-center text-gray-500 py-6">
                 <Sparkles className="w-8 h-8 mx-auto mb-2 text-pink-400" />
-                <p className="text-sm">Ask about safety, packing, budgets, and best times to visit.</p>
+                <p className="text-sm">
+                  Ask about safety, packing, budgets, and best times to visit.
+                </p>
               </div>
             )}
             {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[82%] p-3 rounded-2xl text-sm ${
-                  msg.role === "user"
-                    ? "bg-pink-200 text-pink-900 rounded-br-md"
-                    : "bg-gray-100 text-gray-800 rounded-bl-md"
-                }`}>
+              <div
+                key={idx}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[82%] p-3 rounded-2xl text-sm ${
+                    msg.role === 'user'
+                      ? 'bg-pink-200 text-pink-900 rounded-br-md'
+                      : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                  }`}
+                >
                   {msg.content}
                 </div>
               </div>
@@ -720,8 +753,14 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
                 <div className="bg-gray-100 p-3 rounded-2xl rounded-bl-md">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.1s' }}
+                    />
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.2s' }}
+                    />
                   </div>
                 </div>
               </div>
@@ -732,8 +771,11 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
           {messages.length === 0 && (
             <div className="px-4 pb-2 flex flex-wrap gap-2">
               {quickSuggestions.map((s, i) => (
-                <button key={i} onClick={() => sendMessage(s)}
-                  className="text-xs px-3 py-1.5 bg-pink-100 text-pink-600 rounded-full hover:bg-pink-200">
+                <button
+                  key={i}
+                  onClick={() => sendMessage(s)}
+                  className="text-xs px-3 py-1.5 bg-pink-100 text-pink-600 rounded-full hover:bg-pink-200"
+                >
                   {s}
                 </button>
               ))}
@@ -741,22 +783,64 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
           )}
 
           <div className="p-4 border-t">
-            <form onSubmit={e => { e.preventDefault(); sendMessage(input); }} className="flex gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                sendMessage(input)
+              }}
+              className="flex gap-2"
+            >
               <input
-                type="text" value={input} onChange={e => setInput(e.target.value)}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                aria-label="Ask the travel assistant"
+                maxLength={2000}
                 placeholder="Type your question..."
                 className="flex-1 px-4 py-2 rounded-full border-2 border-gray-200 focus:border-pink-400 focus:outline-none text-sm"
               />
-              <button type="submit" disabled={isLoading || !input.trim()}
-                className="w-10 h-10 bg-pink-400 rounded-full flex items-center justify-center hover:bg-pink-500 disabled:opacity-50">
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="w-10 h-10 bg-pink-400 rounded-full flex items-center justify-center hover:bg-pink-500 disabled:opacity-50"
+              >
                 <Send className="w-4 h-4 text-white" />
               </button>
+              <button
+                type="submit"
+                disabled={searching}
+                className="bg-white/15 text-white rounded-full px-4 py-2 mt-2 text-xs"
+              >
+                {searching ? 'Searching?' : 'Search places'}
+              </button>
+              {searchResults.length > 0 && (
+                <ul
+                  className="bg-white rounded-2xl p-2 mt-2 text-gray-900 max-h-60 overflow-auto"
+                  aria-label="Place search results"
+                >
+                  {searchResults.map((result, i) => (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        className="w-full text-left p-3 hover:bg-pink-50 rounded-xl text-sm"
+                        onClick={() => chooseSearchResult(result)}
+                      >
+                        {result.name}
+                        {result.country ? `, ${result.country}` : ''} <small>? {result.kind}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p role="status" className="text-white text-sm mt-2">
+                {searchError}
+              </p>
             </form>
           </div>
         </div>
       )}
     </>
-  );
+  )
 }
 
 // ─── Globe 2D fallback ────────────────────────────────────────────────────────
@@ -770,328 +854,365 @@ function GlobeFallback({ onSelectDestination }) {
           3D rendering isn&apos;t available in this browser right now. Explore destinations below.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
-          {featuredDestinations.map(dest => (
-            <button key={dest.id} onClick={() => onSelectDestination(dest)}
-              className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 hover:bg-white/20 transition-all text-left group">
+          {featuredDestinations.map((dest) => (
+            <button
+              key={dest.id}
+              onClick={() => onSelectDestination(dest)}
+              className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 hover:bg-white/20 transition-all text-left group"
+            >
               <p className="font-semibold text-white text-sm">{dest.name}</p>
               <p className="text-white/60 text-xs mt-0.5">{dest.country}</p>
               <p className="text-pink-300 text-xs mt-2 group-hover:text-pink-200">View brief →</p>
             </button>
           ))}
         </div>
-        <Link href="/"
-          className="inline-flex items-center gap-2 mt-10 text-white/60 hover:text-white text-sm transition-colors">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 mt-10 text-white/60 hover:text-white text-sm transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to Home
         </Link>
       </div>
     </div>
-  );
+  )
 }
 
 // ─── Main content ─────────────────────────────────────────────────────────────
 function GlobePageContent() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams()
 
-  const containerRef = useRef(null);
-  const globeRef = useRef(null);
+  const containerRef = useRef(null)
+  const globeRef = useRef(null)
 
-  const [Globe, setGlobe] = useState(null);
-  const [blocked, setBlocked] = useState(false);
-  const [viewport, setViewport] = useState({ w: 0, h: 0 });
-  const [isMobile, setIsMobile] = useState(false);
+  const [Globe, setGlobe] = useState(null)
+  const [blocked, setBlocked] = useState(false)
+  const [viewport, setViewport] = useState({ w: 0, h: 0 })
+  const [isMobile, setIsMobile] = useState(false)
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [searchError, setSearchError] = useState('')
+  const [locationMessage, setLocationMessage] = useState('')
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [aiAvailable, setAiAvailable] = useState(false)
+  const briefRequestId = useRef(0)
+  const geoRequestId = useRef(0)
+  useEffect(() => {
+    fetch('/api/capabilities')
+      .then((r) => r.json())
+      .then((c) => setAiAvailable(c.ai))
+      .catch(() => {})
+  }, [])
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
 
-  const [showMarkers, setShowMarkers] = useState(true);
-  const [tapAnywhere, setTapAnywhere] = useState(true);
+  const [showMarkers, setShowMarkers] = useState(true)
+  const [tapAnywhere, setTapAnywhere] = useState(true)
 
-  const [selectedDestination, setSelectedDestination] = useState(null);
-  const [brief, setBrief] = useState(null);
-  const [isLoadingBrief, setIsLoadingBrief] = useState(false);
-  const [globeReady, setGlobeReady] = useState(false);
-  const [panelHeightPx, setPanelHeightPx] = useState(0);
-  const [chatOpenTrigger, setChatOpenTrigger] = useState(0);
+  const [selectedDestination, setSelectedDestination] = useState(null)
+  const [brief, setBrief] = useState(null)
+  const [isLoadingBrief, setIsLoadingBrief] = useState(false)
+  const [globeReady, setGlobeReady] = useState(false)
+  const [panelHeightPx, setPanelHeightPx] = useState(0)
+  const [chatOpenTrigger, setChatOpenTrigger] = useState(0)
 
-  const tripContext = useMemo(() => getTripContextFromSearchParams(searchParams), [searchParams]);
+  const tripContext = useMemo(() => getTripContextFromSearchParams(searchParams), [searchParams])
 
-  const briefCacheRef = useRef(new Map());
-  const inflightBriefRef = useRef(new Map());
-  const briefAbortRef = useRef(null);
-  const geoCacheRef = useRef(new Map());
-  const geoAbortRef = useRef(null);
-  const TTL_MS = 1000 * 60 * 60 * 24;
+  const briefCacheRef = useRef(new Map())
+  const briefAbortRef = useRef(null)
+  const geoAbortRef = useRef(null)
 
-  const getLs = k => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch { return null; } };
-  const setLs = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-
-  const briefKey = d => {
-    const name = normalize(d?.name);
-    const country = normalize(d?.country);
-    if (!name || name === "finding place…" || name === "finding place...") return null;
-    return `brief:${name}|${country}`;
-  };
-  const geoKey = (lat, lng) => `geo:${Math.round(lat * 100) / 100}|${Math.round(lng * 100) / 100}`;
-
-  const getCachedBrief = key => {
-    const mem = briefCacheRef.current.get(key);
-    if (mem && Date.now() - mem.ts < TTL_MS) return mem.data;
-    const ls = getLs(key);
-    if (ls && Date.now() - ls.ts < TTL_MS) { briefCacheRef.current.set(key, ls); return ls.data; }
-    return null;
-  };
-  const setCachedBrief = (key, data) => {
-    const payload = { data, ts: Date.now() };
-    briefCacheRef.current.set(key, payload);
-    setLs(key, payload);
-  };
-  const getCachedGeo = key => {
-    const mem = geoCacheRef.current.get(key);
-    if (mem && Date.now() - mem.ts < TTL_MS) return mem.data;
-    const ls = getLs(key);
-    if (ls && Date.now() - ls.ts < TTL_MS) { geoCacheRef.current.set(key, ls); return ls.data; }
-    return null;
-  };
-  const setCachedGeo = (key, data) => {
-    const payload = { data, ts: Date.now() };
-    geoCacheRef.current.set(key, payload);
-    setLs(key, payload);
-  };
+  const briefKey = (d) => {
+    const name = normalize(d?.name)
+    const country = normalize(d?.country)
+    if (!name || name === 'finding place…' || name === 'finding place...') return null
+    return `brief:v3:${name}|${country}`
+  }
+  const getCachedBrief = useCallback((key) => {
+    const mem = briefCacheRef.current.get(key)
+    if (mem && Date.now() - mem.ts < 86400000) return mem.data
+    let ls = null
+    try {
+      ls = JSON.parse(localStorage.getItem(key) || 'null')
+    } catch {}
+    if (ls && Date.now() - ls.ts < 86400000) {
+      briefCacheRef.current.set(key, ls)
+      return ls.data
+    }
+    return null
+  }, [])
+  const setCachedBrief = useCallback((key, data) => {
+    const payload = { data, ts: Date.now() }
+    briefCacheRef.current.set(key, payload)
+    try {
+      localStorage.setItem(key, JSON.stringify(payload))
+    } catch {}
+  }, [])
+  useEffect(() => {
+    const upd = () => setIsMobile(window.innerWidth < 768)
+    upd()
+    window.addEventListener('resize', upd)
+    return () => window.removeEventListener('resize', upd)
+  }, [])
 
   useEffect(() => {
-    const upd = () => setIsMobile(window.innerWidth < 768);
-    upd();
-    window.addEventListener("resize", upd);
-    return () => window.removeEventListener("resize", upd);
-  }, []);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) return
     const ro = new ResizeObserver(([entry]) => {
-      setViewport({ w: Math.floor(entry.contentRect.width), h: Math.floor(entry.contentRect.height) });
-    });
-    ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, []);
+      setViewport({
+        w: Math.floor(entry.contentRect.width),
+        h: Math.floor(entry.contentRect.height)
+      })
+    })
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!hasWebGL()) { setBlocked(true); return; }
-    ensureWebGpuEnums();
-    let mounted = true;
-    import("react-globe.gl")
-      .then(m => { if (mounted) setGlobe(() => m.default); })
-      .catch(() => { if (mounted) setBlocked(true); });
-    return () => { mounted = false; };
-  }, []);
+    if (typeof window === 'undefined') return
+    if (!hasWebGL()) {
+      setBlocked(true)
+      return
+    }
+    ensureWebGpuEnums()
+    let mounted = true
+    import('react-globe.gl')
+      .then((m) => {
+        if (mounted) setGlobe(() => m.default)
+      })
+      .catch(() => {
+        if (mounted) setBlocked(true)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
-  const flyToLocation = useCallback((lat, lng, altitude = 1.5) => {
-    globeRef.current?.pointOfView({ lat, lng, altitude }, 900);
-  }, []);
+  const flyToLocation = useCallback(
+    (lat, lng, altitude = 1.5) => {
+      globeRef.current?.pointOfView({ lat, lng, altitude }, reducedMotion ? 0 : 900)
+    },
+    [reducedMotion]
+  )
 
-  const trackEvent = useCallback((event_type, event_data) => {
-    fetch("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type, event_data }),
-    }).catch(() => {});
-  }, []);
+  const trackEvent = useCallback(
+    (event_type, event_data) =>
+      recordProductEvent(event_type, { ...event_data, placement: 'globe' }),
+    []
+  )
 
   const onGlobeReady = useCallback(() => {
-    setGlobeReady(true);
+    setGlobeReady(true)
+    globeRef.current?.pointOfView({ lat: 20, lng: 10, altitude: isMobile ? 2 : 2.2 }, 0)
     try {
-      const renderer = globeRef.current?.renderer?.();
-      if (renderer && typeof window !== "undefined") {
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
+      const renderer = globeRef.current?.renderer?.()
+      if (renderer && typeof window !== 'undefined') {
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2))
       }
-      const controls = globeRef.current?.controls?.();
-      if (controls) { controls.enableDamping = true; controls.dampingFactor = 0.08; }
+      const controls = globeRef.current?.controls?.()
+      if (controls) {
+        controls.enableDamping = true
+        controls.dampingFactor = 0.08
+      }
     } catch {}
-  }, [isMobile]);
+  }, [isMobile])
 
-  const rendererConfig = useMemo(() => ({
-    antialias: true, alpha: true,
-    powerPreference: isMobile ? "low-power" : "high-performance",
-  }), [isMobile]);
+  const rendererConfig = useMemo(
+    () => ({
+      antialias: true,
+      alpha: true,
+      powerPreference: isMobile ? 'low-power' : 'high-performance'
+    }),
+    [isMobile]
+  )
 
-  const loadBrief = useCallback(async destination => {
-    if (!destination?.name) return;
-    setIsLoadingBrief(true);
-    setBrief(prev => prev ?? fallbackBrief(destination?.name, destination?.country));
+  const loadBrief = useCallback(
+    async (destination) => {
+      const id = ++briefRequestId.current
+      briefAbortRef.current?.abort()
+      setBrief(fallbackBrief(destination?.name))
+      if (destination?.isRemoteArea || destination?.planningEligible === false) {
+        setBrief({
+          overview:
+            destination.explanation ||
+            'Explore this region by searching for a travel city. No city-specific brief has been generated.'
+        })
+        setIsLoadingBrief(false)
+        return
+      }
+      const key = briefKey(destination)
+      if (!key) return
+      const cached = getCachedBrief(key)
+      if (cached) {
+        setBrief(cached)
+        setIsLoadingBrief(false)
+        return
+      }
+      const controller = new AbortController()
+      briefAbortRef.current = controller
+      setIsLoadingBrief(true)
+      try {
+        const response = await fetch('/api/ai/brief', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            placeName: destination.name,
+            country: destination.country || '',
+            lat: destination.lat,
+            lng: destination.lng
+          })
+        })
+        if (!response.ok) throw new Error('Brief unavailable')
+        const data = await response.json()
+        setCachedBrief(key, data)
+        if (id === briefRequestId.current) setBrief(data)
+      } catch {
+        /* The labelled preparation checklist remains visible. */
+      } finally {
+        if (id === briefRequestId.current) setIsLoadingBrief(false)
+      }
+    },
+    [getCachedBrief, setCachedBrief]
+  )
 
-    const key = briefKey(destination);
-    if (!key) { setIsLoadingBrief(false); return; }
-
-    const cached = getCachedBrief(key);
-    if (cached) { setBrief(cached); setIsLoadingBrief(false); return; }
-
-    if (inflightBriefRef.current.has(key)) {
-      try { const data = await inflightBriefRef.current.get(key); setBrief(data); }
-      finally { setIsLoadingBrief(false); }
-      return;
-    }
-
-    if (briefAbortRef.current) briefAbortRef.current.abort();
-    const controller = new AbortController();
-    briefAbortRef.current = controller;
-
-    const p = (async () => {
-      const response = await fetch("/api/ai/brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({ placeName: destination.name, country: destination.country, lat: destination.lat, lng: destination.lng }),
-      });
-      if (!response.ok) throw new Error("brief failed");
-      const data = await response.json();
-      setCachedBrief(key, data);
-      return data;
-    })();
-
-    inflightBriefRef.current.set(key, p);
-    try { const data = await p; setBrief(data); }
-    catch { /* keep fallback */ }
-    finally { inflightBriefRef.current.delete(key); setIsLoadingBrief(false); }
-  }, []);
-
-  const selectDestination = useCallback((destination, { track = true } = {}) => {
-    setSelectedDestination(destination);
-    loadBrief(destination);
-    if (track) trackEvent("destination_clicked", { name: destination?.name, country: destination?.country });
-  }, [loadBrief, trackEvent]);
+  const selectDestination = useCallback(
+    (destination, { track = true } = {}) => {
+      setSelectedDestination(destination)
+      loadBrief(destination)
+      if (track)
+        trackEvent('destination_clicked', {
+          name: destination?.name,
+          country: destination?.country
+        })
+    },
+    [loadBrief, trackEvent]
+  )
 
   useEffect(() => {
-    const focus = searchParams.get("focus");
-    if (!focus || !globeReady) return;
-    const dest = featuredDestinations.find(d => d.slug === focus);
-    if (!dest) return;
+    const focus = searchParams.get('focus')
+    if (!focus || (!globeReady && !blocked)) return
+    const dest = featuredDestinations.find((d) => d.slug === focus)
+    if (!dest) return
     setTimeout(() => {
-      flyToLocation(dest.lat, dest.lng);
-      selectDestination(dest, { track: true });
-    }, 350);
-  }, [searchParams, globeReady, flyToLocation, selectDestination]);
+      flyToLocation(dest.lat, dest.lng)
+      selectDestination(dest, { track: true })
+    }, 350)
+  }, [searchParams, globeReady, blocked, flyToLocation, selectDestination])
 
-  const handleMarkerClick = point => {
-    flyToLocation(point.lat, point.lng);
-    selectDestination(point, { track: true });
-  };
+  const handleMarkerClick = (point) => {
+    geoRequestId.current++
+    geoAbortRef.current?.abort()
+    setLocationMessage('')
+    flyToLocation(point.lat, point.lng)
+    selectDestination(point, { track: true })
+  }
 
   const handleGlobeClick = async ({ lat, lng }) => {
-    if (!tapAnywhere) return;
-    setSelectedDestination({ id: "custom", name: "Finding place…", country: "", lat, lng, slug: "custom" });
-    setBrief(fallbackBrief("this location", ""));
-    setIsLoadingBrief(true);
-
-    const gk = geoKey(lat, lng);
-    const cachedGeo = getCachedGeo(gk);
-    if (cachedGeo?.name) {
-      const dest = { id: "custom", ...cachedGeo, slug: "custom" };
-      flyToLocation(dest.lat ?? lat, dest.lng ?? lng);
-      selectDestination(dest, { track: true });
-      return;
-    }
-
-    if (geoAbortRef.current) geoAbortRef.current.abort();
-    const controller = new AbortController();
-    geoAbortRef.current = controller;
-
+    if (!tapAnywhere) return
+    const id = ++geoRequestId.current
+    setLocationMessage('Identifying the selected area…')
+    geoAbortRef.current?.abort()
+    const controller = new AbortController()
+    geoAbortRef.current = controller
+    trackEvent('globe_location_selected', {})
     try {
-      const response = await fetch("/api/geocode/reverse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/geocode/reverse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ lat, lng }),
-      });
-
-      let destination;
-      if (response.ok) {
-        const data = await response.json();
-        const normalized = normalizePlaceName({ name: data?.name || '', country: data?.country || '' });
-        const briefName = normalized.isRemoteArea
-          ? (normalized.country !== 'Unknown' ? `Area in ${normalized.country}` : `Location (${lat.toFixed(2)}, ${lng.toFixed(2)})`)
-          : normalized.displayName;
-        const payload = {
-          name: briefName,
-          displayName: normalized.displayName,
-          subtitle: normalized.subtitle,
-          country: normalized.country,
-          isRemoteArea: normalized.isRemoteArea,
-          confidence: normalized.confidence,
-          lat: data?.lat ?? lat,
-          lng: data?.lng ?? lng,
-        };
-        setCachedGeo(gk, payload);
-        destination = { id: "custom", ...payload, slug: "custom" };
-      } else {
-        destination = {
-          id: "custom", name: `Location (${lat.toFixed(2)}, ${lng.toFixed(2)})`,
-          displayName: 'Selected area', subtitle: 'Unknown location',
-          country: "Unknown", isRemoteArea: true, confidence: 'low', lat, lng, slug: "custom",
-        };
-      }
-      flyToLocation(destination.lat, destination.lng);
-      selectDestination(destination, { track: true });
+        body: JSON.stringify({ lat, lng })
+      })
+      const data = await response.json()
+      if (id !== geoRequestId.current) return
+      if (!response.ok) throw new Error(data.error)
+      const destination = { id: 'custom', ...data, ...normalizePlaceName(data), slug: 'custom' }
+      selectDestination(destination)
+      setLocationMessage(data.planningEligible ? '' : data.explanation)
     } catch (e) {
-      if (e?.name !== "AbortError") {
-        const fallbackDest = {
-          id: "custom", name: `Location (${lat.toFixed(2)}, ${lng.toFixed(2)})`,
-          displayName: 'Selected area', subtitle: 'Unknown location',
-          country: "Unknown", isRemoteArea: true, confidence: 'low', lat, lng, slug: "custom",
-        };
-        flyToLocation(lat, lng);
-        selectDestination(fallbackDest, { track: true });
-      }
+      if (e.name !== 'AbortError' && id === geoRequestId.current)
+        setLocationMessage(
+          e.message ||
+            'We could not identify this location accurately. Search for a city or choose another destination.'
+        )
     }
-  };
-
-  const handleSearch = async e => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    setSearching(true);
+  }
+  const chooseSearchResult = (data) => {
+    geoRequestId.current++
+    geoAbortRef.current?.abort()
+    const destination = {
+      id: 'search',
+      ...data,
+      ...normalizePlaceName(data),
+      slug: data.slug || 'search'
+    }
+    flyToLocation(destination.lat, destination.lng)
+    selectDestination(destination)
+    setSearchResults([])
+    setSearchQuery('')
+    setSearchError('')
+    setLocationMessage(
+      data.planningEligible
+        ? ''
+        : data.explanation || 'Explore this region: search for a travel city.'
+    )
+  }
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim() || searching) return
+    setSearching(true)
+    setSearchError('')
+    setSearchResults([])
+    trackEvent('destination_search', {})
     try {
-      const response = await fetch("/api/geocode/forward", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery }),
-      });
-      if (!response.ok) throw new Error("search failed");
-      const data = await response.json();
-      const normalized = normalizePlaceName({ name: data?.name || searchQuery, country: data?.country || '' });
-      const destination = {
-        id: "search",
-        name: normalized.displayName !== 'Selected area' ? normalized.displayName : (data?.name || searchQuery),
-        displayName: normalized.displayName,
-        subtitle: normalized.subtitle,
-        country: normalized.country,
-        isRemoteArea: normalized.isRemoteArea,
-        confidence: normalized.confidence,
-        lat: data?.lat, lng: data?.lng, slug: "search",
-      };
-      flyToLocation(destination.lat, destination.lng);
-      selectDestination(destination, { track: true });
-      setSearchQuery("");
-    } catch (e2) {
-      console.error("Search failed:", e2);
+      const response = await fetch('/api/geocode/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery.trim() })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+      if (!data.length) setSearchError('No places found. Try a city and country.')
+      else if (data.length === 1) chooseSearchResult(data[0])
+      else setSearchResults(data)
+    } catch (e) {
+      setSearchError(e.message || 'Search unavailable. Please retry.')
     } finally {
-      setSearching(false);
+      setSearching(false)
     }
-  };
+  }
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-[#0a0a1a]">
+    <main
+      id="main-content"
+      ref={containerRef}
+      className="relative h-[calc(100dvh-76px)] min-h-[580px] bg-[#0a0a1a]"
+    >
+      <h1 className="sr-only">Explore travel destinations on the globe</h1>
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-40 p-4 pointer-events-none">
         <div className="flex items-center gap-4">
-          <Link href="/"
+          <Link
+            href="/"
             className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/20 transition-colors pointer-events-auto"
-            aria-label="Back">
+            aria-label="Back"
+          >
             <ArrowLeft className="w-5 h-5 text-white" />
           </Link>
           <form onSubmit={handleSearch} className="flex-1 max-w-md pointer-events-auto">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                aria-label="Search city, region or country"
+                maxLength={120}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search city or country..."
                 className="w-full pl-12 pr-10 py-3 bg-white/10 backdrop-blur-md text-white placeholder-gray-400 rounded-full border border-white/20 focus:border-pink-400 focus:outline-none"
               />
@@ -1099,22 +1220,57 @@ function GlobePageContent() {
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-pink-300 border-t-transparent rounded-full animate-spin" />
               )}
             </div>
+            <button
+              type="submit"
+              disabled={searching}
+              className="bg-white/15 text-white rounded-full px-4 py-2 mt-2 text-xs"
+            >
+              {searching ? 'Searching…' : 'Search places'}
+            </button>
+            {searchResults.length > 0 && (
+              <ul
+                className="bg-white rounded-2xl p-2 mt-2 text-gray-900 max-h-60 overflow-auto"
+                aria-label="Place search results"
+              >
+                {searchResults.map((result, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      className="w-full text-left p-3 hover:bg-pink-50 rounded-xl text-sm"
+                      onClick={() => chooseSearchResult(result)}
+                    >
+                      {result.name}
+                      {result.country ? `, ${result.country}` : ''} <small>· {result.kind}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p role="status" className="text-white text-sm mt-2">
+              {searchError}
+            </p>
           </form>
         </div>
 
         <div className="flex gap-2 mt-3">
-          <button onClick={() => setTapAnywhere(v => !v)}
+          <button
+            onClick={() => setTapAnywhere((v) => !v)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors pointer-events-auto ${
-              tapAnywhere ? "bg-pink-500 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"
-            }`}>
+              tapAnywhere ? 'bg-pink-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'
+            }`}
+          >
             <MapPin className="w-4 h-4 inline mr-1" />
-            Tap Anywhere {tapAnywhere ? "ON" : "OFF"}
+            Tap Anywhere {tapAnywhere ? 'ON' : 'OFF'}
           </button>
-          <button onClick={() => setShowMarkers(v => !v)}
+          <button
+            onClick={() => setShowMarkers((v) => !v)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors pointer-events-auto ${
-              showMarkers ? "bg-purple-500 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"
-            }`}>
-            Featured Markers {showMarkers ? "ON" : "OFF"}
+              showMarkers
+                ? 'bg-purple-600 text-white'
+                : 'bg-white/10 text-white/70 hover:bg-white/20'
+            }`}
+          >
+            Featured Markers {showMarkers ? 'ON' : 'OFF'}
           </button>
         </div>
 
@@ -1125,6 +1281,14 @@ function GlobePageContent() {
         )}
       </div>
 
+      {(locationMessage || blocked) && (
+        <p
+          role="status"
+          className="absolute left-4 right-4 top-[180px] z-40 text-sm text-white bg-black/70 rounded-xl p-3 max-w-sm pointer-events-none"
+        >
+          {locationMessage || '3D is unavailable. Choose a destination from the buttons below.'}
+        </p>
+      )}
       {/* Globe */}
       <div className="absolute inset-0">
         {blocked ? (
@@ -1143,28 +1307,36 @@ function GlobePageContent() {
             width={viewport.w}
             height={viewport.h}
             rendererConfig={rendererConfig}
-            globeImageUrl="https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-            bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
-            backgroundImageUrl="https://unpkg.com/three-globe/example/img/night-sky.png"
-            atmosphereColor="rgba(255, 182, 193, 0.30)"
-            atmosphereAltitude={0.25}
+            globeImageUrl={isMobile ? '/earth/earth-mobile.jpg' : '/earth/earth-day.jpg'}
+            backgroundColor="#080c1c"
+            atmosphereColor="#7fb6e8"
+            atmosphereAltitude={0.16}
             pointsData={[
-              ...(showMarkers ? featuredDestinations.map(d => ({ ...d, _type: 'featured' })) : []),
-              ...(selectedDestination ? [{ ...selectedDestination, _type: 'selected' }] : []),
+              ...(showMarkers
+                ? featuredDestinations.map((d) => ({ ...d, _type: 'featured' }))
+                : []),
+              ...(selectedDestination ? [{ ...selectedDestination, _type: 'selected' }] : [])
             ]}
-            pointLat={d => d.lat}
-            pointLng={d => d.lng}
-            pointColor={d => d._type === 'selected' ? "#ffffff" : "#ff69b4"}
-            pointAltitude={d => d._type === 'selected' ? 0.06 : 0.02}
-            pointRadius={d => d._type === 'selected' ? 0.7 : 0.45}
+            pointLat={(d) => d.lat}
+            pointLng={(d) => d.lng}
+            pointColor={(d) => (d._type === 'selected' ? '#ffffff' : '#ff69b4')}
+            pointAltitude={(d) => (d._type === 'selected' ? 0.06 : 0.02)}
+            pointRadius={(d) => (d._type === 'selected' ? 0.6 : 0.35)}
+            pointLabel={(d) => {
+              const el = document.createElement('span')
+              el.textContent = `${d.name}, ${d.country}`
+              return el
+            }}
             pointsMerge={false}
             onPointClick={handleMarkerClick}
             onGlobeClick={handleGlobeClick}
             enablePointerInteraction={true}
-            ringsData={selectedDestination ? [selectedDestination] : []}
-            ringLat={d => d.lat}
-            ringLng={d => d.lng}
-            ringColor={() => "rgba(255,255,255,0.75)"}
+            ringsData={
+              !reducedMotion && !isMobile && selectedDestination ? [selectedDestination] : []
+            }
+            ringLat={(d) => d.lat}
+            ringLng={(d) => d.lng}
+            ringColor={() => 'rgba(255,255,255,0.75)'}
             ringMaxRadius={3.5}
             ringPropagationSpeed={3}
             ringRepeatPeriod={900}
@@ -1172,11 +1344,35 @@ function GlobePageContent() {
         )}
       </div>
 
+      <details className="absolute bottom-4 left-4 z-40 bg-black/75 text-white rounded-xl p-3 max-w-[220px]">
+        <summary className="cursor-pointer text-xs">Choose a destination</summary>
+        <div className="grid grid-cols-2 gap-1 mt-3">
+          {featuredDestinations.map((d) => (
+            <button
+              className="text-xs text-left p-2 hover:bg-white/15 rounded"
+              key={d.slug}
+              onClick={() => handleMarkerClick(d)}
+            >
+              {d.name}
+            </button>
+          ))}
+        </div>
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] underline block mt-3"
+        >
+          Geocoding © OpenStreetMap contributors
+        </a>
+      </details>
       {/* Selected place label (desktop, when no panel open) */}
       {selectedDestination && !isMobile && (
         <div className="absolute top-[88px] left-4 z-40 pointer-events-none">
           <div className="bg-black/50 backdrop-blur-md rounded-2xl px-4 py-2.5 border border-white/20 max-w-[220px]">
-            <p className="text-white text-xs font-medium opacity-60 uppercase tracking-wide mb-0.5">Selected</p>
+            <p className="text-white text-xs font-medium opacity-60 uppercase tracking-wide mb-0.5">
+              Selected
+            </p>
             <p className="text-white font-semibold text-sm leading-tight truncate">
               {selectedDestination.displayName || selectedDestination.name}
             </p>
@@ -1197,32 +1393,39 @@ function GlobePageContent() {
           isLoading={isLoadingBrief}
           tripContext={tripContext}
           onClose={() => {
-            setSelectedDestination(null);
-            setBrief(null);
-            setPanelHeightPx(0);
+            briefRequestId.current++
+            briefAbortRef.current?.abort()
+            setSelectedDestination(null)
+            setBrief(null)
+            setPanelHeightPx(0)
           }}
-          onOpenChat={() => setChatOpenTrigger(t => t + 1)}
+          onOpenChat={aiAvailable ? () => setChatOpenTrigger((t) => t + 1) : undefined}
           isMobile={isMobile}
           onHeightPxChange={setPanelHeightPx}
         />
       )}
 
-      <ChatWidget
-        destinationContext={selectedDestination}
-        isMobile={isMobile}
-        panelOpen={!!selectedDestination}
-        panelHeightPx={panelHeightPx}
-        openTrigger={chatOpenTrigger}
-      />
-    </div>
-  );
+      {aiAvailable && (
+        <ChatWidget
+          destinationContext={selectedDestination}
+          isMobile={isMobile}
+          panelOpen={!!selectedDestination}
+          panelHeightPx={panelHeightPx}
+          openTrigger={chatOpenTrigger}
+        />
+      )}
+    </main>
+  )
 }
 
 export default function GlobePage() {
   return (
     <Suspense
       fallback={
-        <div className="fixed inset-0 bg-[#0a0a1a] flex items-center justify-center">
+        <div
+          id="main-content"
+          className="relative h-[calc(100dvh-76px)] bg-[#0a0a1a] flex items-center justify-center"
+        >
           <div className="text-center text-white">
             <div className="w-16 h-16 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p>Loading Globe…</p>
@@ -1232,5 +1435,5 @@ export default function GlobePage() {
     >
       <GlobePageContent />
     </Suspense>
-  );
+  )
 }

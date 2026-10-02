@@ -1,3 +1,77 @@
 'use client'
-import {useState} from 'react'
-export default function ContactForm(){const [busy,setBusy]=useState(false),[sent,setSent]=useState(false),[message,setMessage]=useState('');async function submit(e){e.preventDefault();if(busy)return;setBusy(true);const data=new FormData(e.currentTarget);try{const r=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(data))});const b=await r.json();if(!r.ok)throw new Error(b.error);setSent(true);setMessage('Your message was accepted for email delivery.')}catch(err){setMessage(err.message || 'Please try again.')}finally{setBusy(false)}}return <form onSubmit={submit} className="space-y-4 mt-8">{[['name','Name','text',80],['email','Email','email',254],['subject','Subject','text',120]].map(([name,label,type,max])=><label key={name} className="field-label">{label}<input name={name} type={type} maxLength={max} className="input-femin" required disabled={busy||sent}/></label>)}<label className="field-label">Message<textarea name="message" className="input-femin" maxLength={4000} rows={6} required disabled={busy||sent}/></label><label className="honeypot" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off"/></label><p className="text-sm">We use your details to respond to this message. See our <a href="/privacy" className="underline">Privacy Policy</a>.</p><button className="btn-primary" disabled={busy||sent}>{busy?'Sending…':sent?'Message accepted':'Send message'}</button><p role="status">{message}</p></form>}
+import { useState } from 'react'
+import { trackEvent } from '@/lib/events'
+export default function ContactForm() {
+  const [busy, setBusy] = useState(false),
+    [sent, setSent] = useState(false),
+    [message, setMessage] = useState('')
+  async function submit(e) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    const data = new FormData(e.currentTarget)
+    try {
+      const r = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(data))
+      })
+      const b = await r.json()
+      if (!r.ok) throw new Error(b.error)
+      setSent(true)
+      trackEvent('contact_submitted', { placement: 'contact' })
+      setMessage('Your message was accepted for email delivery.')
+    } catch (err) {
+      setMessage(err.message || 'Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={submit} className="space-y-4 mt-8">
+      {[
+        ['name', 'Name', 'text', 80],
+        ['email', 'Email', 'email', 254],
+        ['subject', 'Subject', 'text', 120]
+      ].map(([name, label, type, max]) => (
+        <label key={name} className="field-label">
+          {label}
+          <input
+            name={name}
+            type={type}
+            maxLength={max}
+            className="input-femin"
+            required
+            disabled={busy || sent}
+          />
+        </label>
+      ))}
+      <label className="field-label">
+        Message
+        <textarea
+          name="message"
+          className="input-femin"
+          maxLength={4000}
+          rows={6}
+          required
+          disabled={busy || sent}
+        />
+      </label>
+      <label className="honeypot" aria-hidden="true">
+        Website
+        <input name="website" tabIndex={-1} autoComplete="off" />
+      </label>
+      <p className="text-sm">
+        We use your details to respond to this message. See our{' '}
+        <a href="/privacy" className="underline">
+          Privacy Policy
+        </a>
+        .
+      </p>
+      <button className="btn-primary" disabled={busy || sent}>
+        {busy ? 'Sending…' : sent ? 'Message accepted' : 'Send message'}
+      </button>
+      <p role="status">{message}</p>
+    </form>
+  )
+}
