@@ -18,7 +18,14 @@ export default function Image() {
           color: '#302638'
         }}
       >
-        <div style={{ fontSize: 40, marginBottom: 40 }}>✦ FeminTravel</div>
+        <div
+          style={{ fontSize: 40, marginBottom: 40, display: 'flex', alignItems: 'center', gap: 16 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24">
+            <path d="M12 1L15 9L23 12L15 15L12 23L9 15L1 12L9 9Z" fill="#bf8355" />
+          </svg>
+          FeminTravel
+        </div>
         <div style={{ fontSize: 76, maxWidth: 900 }}>Thoughtful trips, beautifully planned.</div>
         <div style={{ fontSize: 28, marginTop: 34 }}>
           AI-powered travel planning for women and friends
