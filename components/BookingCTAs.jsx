@@ -23,7 +23,7 @@ export default function BookingCTAs({ destination, compact = false, placement = 
             className="booking-link"
             onClick={() =>
               trackEvent('affiliate_click', {
-                provider: p.id,
+                provider: p.provider,
                 category: p.category,
                 destination: destination?.name,
                 country: destination?.country,

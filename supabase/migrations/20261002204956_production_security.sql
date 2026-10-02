@@ -25,7 +25,7 @@ ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.destination_briefs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.destinations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.leads,public.events,public.trips,public.rate_limits,public.destination_briefs FROM anon,authenticated;
+REVOKE ALL ON public.leads,public.events,public.trips,public.rate_limits,public.destination_briefs FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON public.destinations,public.blog_posts FROM anon,authenticated;
 GRANT SELECT ON public.destinations,public.blog_posts TO anon,authenticated;
 CREATE POLICY public_destinations_read ON public.destinations FOR SELECT TO anon,authenticated USING (true);

@@ -44,6 +44,20 @@ export default function RootLayout({ children }) {
           Skip to content
         </a>
         <Header />
+        {config.appUrl && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'WebSite',
+                name: 'FeminTravel',
+                url: config.appUrl,
+                description: 'AI-powered travel planning for women and friends.'
+              }).replace(/</g, '\\u003c')
+            }}
+          />
+        )}
         {children}
         <Footer />
       </body>

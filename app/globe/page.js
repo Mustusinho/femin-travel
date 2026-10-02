@@ -631,6 +631,20 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
+  const chatButtonRef = useRef(null)
+  const chatInputRef = useRef(null)
+  useEffect(() => {
+    if (!isOpen) return
+    chatInputRef.current?.focus()
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        chatButtonRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isOpen])
 
   const [vh, setVh] = useState(800)
   useEffect(() => {
@@ -670,10 +684,13 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
         ...prev,
         { role: 'assistant', content: data?.response || 'Sorry—try again.' }
       ])
-    } catch {
+    } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "I'm having trouble. Please try again!" }
+        {
+          role: 'assistant',
+          content: error.message || 'The assistant is unavailable. Please retry.'
+        }
       ])
     } finally {
       setIsLoading(false)
@@ -694,10 +711,12 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
   return (
     <>
       <button
+        ref={chatButtonRef}
         onClick={() => setIsOpen((v) => !v)}
         style={{ right: dynamicRight, bottom: dynamicBottom }}
         className="fixed z-[110] w-14 h-14 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-        aria-label="Open chat"
+        aria-label={isOpen ? 'Close chat' : 'Open chat'}
+        aria-expanded={isOpen}
       >
         {isOpen ? (
           <X className="w-6 h-6 text-white" />
@@ -708,6 +727,8 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
 
       {isOpen && (
         <div
+          role="region"
+          aria-label="Travel assistant"
           style={{ right: dynamicRight, bottom: chatWindowBottom }}
           className="fixed z-[110] w-[calc(100vw-48px)] max-w-sm bg-white rounded-3xl shadow-2xl max-h-[60vh] flex flex-col overflow-hidden"
         >
@@ -717,6 +738,9 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
               {destinationContext?.name
                 ? `Helping with ${destinationContext.displayName || destinationContext.name}`
                 : 'Ask me anything!'}
+            </p>
+            <p className="text-xs text-gray-700 mt-2">
+              AI planning assistance. Verify time-sensitive information with official sources.
             </p>
           </div>
 
@@ -773,6 +797,7 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
               {quickSuggestions.map((s, i) => (
                 <button
                   key={i}
+                  disabled={isLoading}
                   onClick={() => sendMessage(s)}
                   className="text-xs px-3 py-1.5 bg-pink-100 text-pink-600 rounded-full hover:bg-pink-200"
                 >
@@ -791,6 +816,7 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
               className="flex gap-2"
             >
               <input
+                ref={chatInputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -801,40 +827,12 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
               />
               <button
                 type="submit"
+                aria-label="Send question"
                 disabled={isLoading || !input.trim()}
                 className="w-10 h-10 bg-pink-400 rounded-full flex items-center justify-center hover:bg-pink-500 disabled:opacity-50"
               >
                 <Send className="w-4 h-4 text-white" />
               </button>
-              <button
-                type="submit"
-                disabled={searching}
-                className="bg-white/15 text-white rounded-full px-4 py-2 mt-2 text-xs"
-              >
-                {searching ? 'Searching?' : 'Search places'}
-              </button>
-              {searchResults.length > 0 && (
-                <ul
-                  className="bg-white rounded-2xl p-2 mt-2 text-gray-900 max-h-60 overflow-auto"
-                  aria-label="Place search results"
-                >
-                  {searchResults.map((result, i) => (
-                    <li key={i}>
-                      <button
-                        type="button"
-                        className="w-full text-left p-3 hover:bg-pink-50 rounded-xl text-sm"
-                        onClick={() => chooseSearchResult(result)}
-                      >
-                        {result.name}
-                        {result.country ? `, ${result.country}` : ''} <small>? {result.kind}</small>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p role="status" className="text-white text-sm mt-2">
-                {searchError}
-              </p>
             </form>
           </div>
         </div>
@@ -846,7 +844,7 @@ function ChatWidget({ destinationContext, isMobile, panelOpen, panelHeightPx, op
 // ─── Globe 2D fallback ────────────────────────────────────────────────────────
 function GlobeFallback({ onSelectDestination }) {
   return (
-    <div className="absolute inset-0 flex items-start justify-center overflow-y-auto pt-20 pb-8 px-4">
+    <div className="absolute inset-0 flex items-start justify-center overflow-y-auto pt-[220px] md:pt-[190px] pb-24 px-4">
       <div className="max-w-2xl w-full text-center">
         <div className="text-5xl mb-4">🌍</div>
         <h2 className="font-serif text-2xl font-bold text-white mb-2">3D Globe Unavailable</h2>
@@ -1276,17 +1274,17 @@ function GlobePageContent() {
 
         {tapAnywhere && (
           <p className="text-white/60 text-sm mt-2 bg-black/30 backdrop-blur-sm inline-block px-3 py-1 rounded-full">
-            👆 Tap anywhere on the globe to explore
+            👆 Tap the globe to explore; place identification varies
           </p>
         )}
       </div>
 
-      {(locationMessage || blocked) && (
+      {locationMessage && (
         <p
           role="status"
           className="absolute left-4 right-4 top-[180px] z-40 text-sm text-white bg-black/70 rounded-xl p-3 max-w-sm pointer-events-none"
         >
-          {locationMessage || '3D is unavailable. Choose a destination from the buttons below.'}
+          {locationMessage}
         </p>
       )}
       {/* Globe */}

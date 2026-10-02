@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { tripSchema } from '@/lib/validation.mjs'
+import { tripSchema, planSchema } from '@/lib/validation.mjs'
 import { trackEvent } from '@/lib/events'
 import TripResult from './TripResult'
 const defaults = {
@@ -79,7 +79,12 @@ export default function Planner({ initialDestination }) {
         })
         if (!initialDestination || initialDestination === saved.input?.destination) {
           setStep(saved.step || 0)
-          if (saved.result) setResult(saved.result)
+          if (
+            saved.result &&
+            ['ai', 'checklist'].includes(saved.result.mode) &&
+            planSchema.safeParse(saved.result.plan).success
+          )
+            setResult(saved.result)
         }
       }
     } catch {}
@@ -140,6 +145,8 @@ export default function Planner({ initialDestination }) {
       })
       const data = await r.json()
       if (!r.ok) throw new Error(data.error)
+      if (!['ai', 'checklist'].includes(data.mode) || !planSchema.safeParse(data.plan).success)
+        throw new Error('The result could not be read. Please retry.')
       setResult(data)
       trackEvent('trip_generated', {
         destination: input.destination,

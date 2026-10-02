@@ -57,6 +57,7 @@ export default function TripResult({
   }
   async function email(e) {
     e.preventDefault()
+    if (emailStatus === 'Sending…') return
     setEmailStatus('Sending…')
     try {
       const r = await fetch('/api/trips/email', {

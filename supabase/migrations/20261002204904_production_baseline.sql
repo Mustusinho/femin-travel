@@ -1,5 +1,5 @@
 -- FeminTravel Supabase Schema
--- Run this in your Supabase SQL Editor to set up the database
+-- Apply through the versioned migration workflow documented in the launch checklist.
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
