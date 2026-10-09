@@ -1,4 +1,4 @@
-# Feature branch QA — 2026-10-02
+# Feature branch QA — 2026-10-09
 
 Branch: `feat/femintravel-production-v2`, based on recoverable baseline `dd340ed`. Local and remote `main` remain `d7b658c`. No branch switch, reset, merge or force push was performed.
 
@@ -8,18 +8,18 @@ Branch: `feat/femintravel-production-v2`, based on recoverable baseline `dd340ed
 | --- | --- |
 | Dependency installation | Yarn install passed; lockfile committed |
 | Production build | `yarn build` passed on Next.js 15.5.27 / React 18 |
-| Logic tests | 11/11 passed |
-| Production browser suite | 10/10 passed on local production build |
+| Logic tests | 12/12 passed, including isolation of complete and partial inherited preview credentials without bypassing production validation |
+| Production browser suite | 10/10 passed on the deployed Vercel checklist preview; earlier local production suite also passed |
 | Lint | ESLint CLI passed, including undefined-variable checks |
 | Formatting | Prettier check passed |
-| Dependencies | Full Yarn audit: zero low/moderate/high/critical findings at QA time |
-| Database migrations | Both migrations applied to isolated PostgreSQL 16; rollback-only assertions passed for RLS/privileges, rate limits, duplicate leads and expiry cleanup |
+| Dependencies | Full Yarn audit on 2026-10-02: zero low/moderate/high/critical findings; no dependency changes since that check |
+| Database migrations | Both migrations applied to isolated PostgreSQL 16 on 2026-10-02; rollback-only assertions passed for RLS/privileges, rate limits, duplicate leads and expiry cleanup. No remote production migrations applied |
 | Routes/links | Rendered navigation crawled successfully; unknown destination/article routes return 404; no empty/#/javascript navigation links |
 | Desktop/mobile | 1280, 1440, 1920 and 360×800, 390×844, 430×932 passed viewport-fit checks; planner results also checked at 390/1440 |
 | Accessibility | Core-page axe WCAG checks have no serious/critical findings; mobile menu/sheet and chat keyboard behavior tested |
 | Assets | Branded social image returns image/png, favicon exists, NASA desktop/mobile textures are local with attribution |
-| Security headers | Actual local production responses confirmed nosniff, frame restrictions, permissions, scoped CSP and preview noindex |
-| Git/secret scan | Clean feature history, diff check passed, no credential-pattern matches in tracked changes |
+| Security headers | Actual deployed preview responses confirmed nosniff, frame restrictions, permissions, scoped CSP and noindex; same-origin planner accepted and unrelated origin rejected |
+| Git/secret scan | Feature history preserved, diff check passed, no credential-pattern matches in tracked files. The owner's existing uncommitted `.gitignore` addition is preserved separately |
 
 The browser suite verifies both the real unconfigured product and isolated configured-UI HTTP fixtures. Fixtures exercise lead/save failure-before-success and chat errors without calling external providers. They are not evidence of live Supabase/OpenAI/Resend integration success.
 
@@ -27,16 +27,41 @@ All required public pages and visible internal links were crawled, including the
 
 Screenshots were inspected for homepage composition, results, mobile globe/sheet and social branding. Heavy globe code is loaded only on `/globe`; homepage first-load JS is approximately 113KB and planner approximately 128KB in the build report. Desktop/mobile Earth textures are approximately 345KB/82KB. No measured Lighthouse score or physical-device performance claim is made. Actual iOS/Android touch, screen-reader and provider-configured QA remain launch checks.
 
-## External state and preview gate
+## Deployed preview verification
 
-The feature branch was pushed normally. Vercel triggered deployment `dpl_CYZd8H97UvN5tS5JJUpo7XMjRPhb` for commit `67a4c1a` and reported **failure**. [Deployment dashboard](https://vercel.com/mustusinhos-projects/femin-travel/CYZd8H97UvN5tS5JJUpo7XMjRPhb). This workspace has no Vercel CLI login/token to inspect private build logs. No failure cause is asserted without those logs. The owner has been asked for the first build error or authenticated access; the suggested inspection command is:
+The feature branch was pushed normally. Authenticated Vercel logs identified the earlier failure: the project retained legacy variable names and provider credentials, while `SUPABASE_URL`, `RATE_LIMIT_SALT` and `NEXT_PUBLIC_CONTACT_EMAIL` were missing. Dependency installation succeeded; the deliberate prebuild environment checks stopped the build. Only variable names/configuration presence were inspected; credentials were not printed.
 
-```text
-npx vercel inspect dpl_CYZd8H97UvN5tS5JJUpo7XMjRPhb --logs
-```
+Commit `df10675` introduced `FEMINTRAVEL_PREVIEW_CHECKLIST`, enabled only for this branch's Vercel Preview environment. Production ignores it. AI, storage, email, analytics and external geocoding remain disabled even if legacy keys are inherited. This allows honest checklist/UI QA without paid provider calls, test emails or writes to a shared production database. Production validation remains enforced.
 
-Preview route/provider QA is **not verified**. Subsequent commits can trigger a new deployment; check the latest feature SHA's Vercel status before approving it. The local build succeeds, which does not prove the remote environment/install configuration is complete.
+Deployment `dpl_Hoo36yZQfQjXZyMDZycBXAvAChhJ`, commit `df10675`, reached **READY** on Node 24.x:
 
-Local optional capabilities at QA time: AI, cloud save, email, contact form, lead collection and analytics are all disabled. The real production domain/contact, Supabase project/migrations/shared-limit salt, OpenAI access and optional Resend/affiliate/social setup are owner-managed. Remote Vercel variable values have not been inspected; do not assume they match the empty local environment.
+- [Immutable tested preview](https://femin-travel-hkvxp2362-mustusinhos-projects.vercel.app)
+- [Feature branch preview alias](https://femin-travel-git-feat-femintravel-p-776a62-mustusinhos-projects.vercel.app)
+- [Deployment dashboard](https://vercel.com/mustusinhos-projects/femin-travel/Hoo36yZQfQjXZyMDZycBXAvAChhJ)
 
-**Do not merge yet.** Resolve the preview failure, configure and test actual provider integrations, and complete owner QA using [the production launch checklist](PRODUCTION_LAUNCH_CHECKLIST.md). No production-ready claim or automatic production merge/deploy is made.
+Deployment protection remains enabled. Authenticated QA used the owner's Vercel CLI automation bypass; temporary host-scoped browser cookie files were deleted afterwards. Authenticated Playwright runs disable traces to keep access cookies out of artifacts. A reviewer may need to sign in to Vercel to open the preview. The owner can revoke the CLI-generated automation bypass in project settings when it is no longer needed.
+
+All 10 browser tests passed against this deployment in 43.4 seconds. They covered public routes and all rendered internal links, planner validation/back navigation/result recovery, disabled persistence and invalid API requests, globe handoff without WebGL, mobile sheet dragging/menu controls, six viewport sizes, and core-page WCAG checks. Three tests use isolated HTTP fixtures to validate configured chat/lead/save UI outcomes; they are not live integration tests.
+
+Additional deployed response checks confirmed all optional capabilities are false, a correctly identified curated Portugal search works, unconfigured remote lookup/contact return 503, disabled analytics returns `recorded: false`, and briefs/trip generation return labelled preparation checklists. Same-origin generation works with browser headers; an unrelated origin returns 403. PNG social image (approximately 114KB), SVG icon and both NASA textures return their actual media types. Open Graph references the real branch preview URL, not localhost. Preview sitemap is empty; pages use noindex metadata/headers and robots permits crawlers to read those headers.
+
+## Owner QA and external requirements
+
+| Area | Current status / remaining action |
+| --- | --- |
+| Branch / commits | `feat/femintravel-production-v2`; logical commits pushed normally. `main` remains `d7b658c`; no production merge/deployment |
+| Build / tests | Local `yarn build`, 12 logic tests, lint and formatting passed; Vercel build and 10 deployed browser tests passed |
+| Routes | Homepage, planner, globe, six destinations, three articles, kit, About/contact/legal/accessibility and visible internal navigation verified |
+| Database | Reproducible migrations and isolated SQL QA passed. Configure an isolated preview project, apply migrations and test actual lead/save/recovery/limits before enabling storage |
+| OpenAI | Existing Vercel key name detected; availability/quota not tested. Preview intentionally disables calls. Validate genuine generation after persistent request protection is configured |
+| Email / contact | Existing Resend/sender variable names detected; sending domain and delivery unverified. Configure the real public inbox before enabling contact or lead capture |
+| Affiliates | Ordinary provider searches work with disclosure; no partner credentials/relationships configured or claimed |
+| Social | No accounts configured; absent platforms are hidden. Actual account URLs are optional |
+| Legal / trust | Shared footer and real information pages verified. Actual operator/contact details and qualified legal review remain launch tasks |
+| Security | Validated/bounded APIs, production rate-limit guards and deployed headers verified. No credentials exposed; production environment values were not modified |
+| Performance / mobile | Lazy globe, local reduced-size textures, six responsive widths and mobile controls verified. Physical iOS/Android, screen-reader and measured field performance QA remain |
+| Preview | Checklist preview READY and tested; live AI/persistence/email/provider QA remains incomplete |
+
+The required live-preview configuration is an isolated `SUPABASE_URL` and service role, versioned migrations, a private 32+ character `RATE_LIMIT_SALT`, an actual `NEXT_PUBLIC_APP_URL`, and a verified `NEXT_PUBLIC_CONTACT_EMAIL`. Existing provider keys should be reused only after availability/ownership and isolation are confirmed; new keys are not assumed necessary. Resend sending-domain verification, genuine partner templates and social URLs are optional setup according to which features the owner enables. Schedule retention cleanup and validate provider spending limits before launch.
+
+**Ready for owner QA; do not merge yet.** Use [the production launch checklist](PRODUCTION_LAUNCH_CHECKLIST.md), complete isolated live-provider QA and approve actual contact/legal/domain configuration before considering production. No production-ready claim or automatic production merge/deploy is made.

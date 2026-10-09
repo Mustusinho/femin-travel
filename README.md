@@ -112,6 +112,8 @@ yarn test:e2e
 
 Optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an already installed Chromium. `.qa/screenshots` and Playwright reports are ignored. Tests default to unconfigured checklist mode; live configured-provider QA is documented separately. Browser emulation/automated checks do not prove physical-device performance or screen-reader usability.
 
+For a protected Vercel preview, authenticate using the owner account and set `QA_STORAGE_STATE` to a private Playwright cookie-state file under `.qa/`. This state is used by both browser and API tests; traces are disabled when it is present so access cookies are not captured. Remove the file after QA. Never send a deployment bypass secret as a global browser header, disable deployment protection, or commit authentication state. `vercel curl <actual-preview-url>/api/capabilities` can verify authenticated preview access through the CLI.
+
 ## Vercel preview, SEO and launch
 
 `vercel.json` pins install/build commands. Push only the feature branch; use its authenticated Vercel preview and verify all routes/integrations before production. Set a genuine production domain/contact, complete migrations/retention/email/partner configuration, review legal copy and run owner QA. Do not merge automatically.

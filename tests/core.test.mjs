@@ -99,6 +99,7 @@ test('checklist previews isolate inherited integrations without bypassing produc
     NODE_ENV: 'production',
     FEMINTRAVEL_PREVIEW_CHECKLIST: 'true',
     OPENAI_API_KEY: 'test-only',
+    SUPABASE_URL: 'https://project.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'test-only',
     RESEND_API_KEY: 'test-only',
     EMAIL_FROM: 'sender@test.invalid',
@@ -111,10 +112,12 @@ test('checklist previews isolate inherited integrations without bypassing produc
   for (const feature of ['ai', 'storage', 'email', 'analytics', 'mapbox', 'indexable'])
     assert.equal(config[feature], false, feature)
   assert.deepEqual(configErrors(preview), [])
+  assert.deepEqual(configErrors({ ...preview, SUPABASE_URL: undefined }), [])
   for (const VERCEL_ENV of ['production', 'development', undefined]) {
     const env = { ...inherited, VERCEL_ENV }
     assert.equal(readConfig(env).previewChecklist, false)
     assert.equal(readConfig(env).ai, true)
+    assert.equal(readConfig(env).storage, true)
     assert.ok(configErrors(env).length)
   }
   assert.ok(configErrors({ ...preview, FEMINTRAVEL_PREVIEW_CHECKLIST: 'false' }).length)
