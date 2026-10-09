@@ -94,6 +94,34 @@ test('production configuration rejects partially configured and unprotected inte
     []
   )
 })
+test('checklist previews isolate inherited integrations without bypassing production validation', () => {
+  const inherited = {
+    NODE_ENV: 'production',
+    FEMINTRAVEL_PREVIEW_CHECKLIST: 'true',
+    OPENAI_API_KEY: 'test-only',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-only',
+    RESEND_API_KEY: 'test-only',
+    EMAIL_FROM: 'sender@test.invalid',
+    MAPBOX_TOKEN: 'test-only',
+    NEXT_PUBLIC_ANALYTICS_ENABLED: 'true'
+  }
+  const preview = { ...inherited, VERCEL_ENV: 'preview' }
+  const config = readConfig(preview)
+  assert.equal(config.previewChecklist, true)
+  for (const feature of ['ai', 'storage', 'email', 'analytics', 'mapbox', 'indexable'])
+    assert.equal(config[feature], false, feature)
+  assert.deepEqual(configErrors(preview), [])
+  for (const VERCEL_ENV of ['production', 'development', undefined]) {
+    const env = { ...inherited, VERCEL_ENV }
+    assert.equal(readConfig(env).previewChecklist, false)
+    assert.equal(readConfig(env).ai, true)
+    assert.ok(configErrors(env).length)
+  }
+  assert.ok(configErrors({ ...preview, FEMINTRAVEL_PREVIEW_CHECKLIST: 'false' }).length)
+  assert.ok(
+    configErrors({ ...preview, NEXT_PUBLIC_APP_URL: 'https://femintravel.test/subpath' }).length
+  )
+})
 test('leads require valid email and explicit consent; never accept a honeypot', () => {
   assert.equal(leadSchema.safeParse({ name: 'Alice', email: 'bad', consent: true }).success, false)
   assert.equal(leadSchema.safeParse({ name: 'Alice', email: 'a@b.com' }).success, false)

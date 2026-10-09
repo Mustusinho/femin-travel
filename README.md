@@ -41,6 +41,7 @@ The shared Header and Footer render working routes and configured real social li
 | Category | Configuration and behavior |
 | --- | --- |
 | App | `NEXT_PUBLIC_APP_URL` is the real HTTPS origin. `NEXT_PUBLIC_CONTACT_EMAIL` is an owned inbox. Both are required for the Vercel production environment, never invented. |
+| Preview isolation | `FEMINTRAVEL_PREVIEW_CHECKLIST=true` works only when Vercel sets `VERCEL_ENV=preview`. It disables inherited AI, storage, email, analytics and external geocoding. Curated search and labelled personalized preparation checklists remain available. Production ignores this flag. |
 | Storage | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; server only. Apply both versioned migrations. Save returns success only after database confirmation. Links expire after 30 days. |
 | Abuse controls | Production integrations require storage and private `RATE_LIMIT_SALT` (32+ characters). Atomic database RPC provides shared limits across serverless instances. Salted hashes are used instead of raw IP storage. |
 | AI | Optional `OPENAI_API_KEY`, central `OPENAI_TRAVEL_MODEL` (default `gpt-4o-mini`). Missing key/provider errors/malformed output produce a labelled checklist. No live visa/pricing/safety claims. |
@@ -114,6 +115,10 @@ Optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an already installed Chromi
 ## Vercel preview, SEO and launch
 
 `vercel.json` pins install/build commands. Push only the feature branch; use its authenticated Vercel preview and verify all routes/integrations before production. Set a genuine production domain/contact, complete migrations/retention/email/partner configuration, review legal copy and run owner QA. Do not merge automatically.
+
+For UI/checklist QA before live services are configured, add `FEMINTRAVEL_PREVIEW_CHECKLIST=true` to the **Preview** environment, scoped to `feat/femintravel-production-v2`, and redeploy. This mode intentionally makes no provider calls or database writes, even if the project inherited credentials from an earlier version. Missing cloud save/contact delivery is stated clearly. It is not evidence that live AI, persistence or email works. Remove the branch override only after isolated preview credentials, migrations, request protection and real contact information have been configured and tested.
+
+Legacy Vercel variable names need deliberate migration: this implementation uses server-only `SUPABASE_URL` instead of `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_APP_URL` instead of `NEXT_PUBLIC_BASE_URL`, and `OPENAI_TRAVEL_MODEL` instead of `AI_MODEL`. Set `RATE_LIMIT_SALT` and a verified `NEXT_PUBLIC_CONTACT_EMAIL`; never infer a public contact from private notification/admin addresses. Old variables can stay in place during review but are not aliases for the new configuration. Do not change production or apply migrations to a shared production database merely to unblock preview QA.
 
 Sitemap, canonical/OG/X metadata and Article schema use the configured application origin. Local/preview pages are noindex; planner/shared-trip routes are excluded from indexing. A branded generated social image and actual favicon are included. The homepage never loads the globe bundle. Earth textures are local 2048px desktop/1024px mobile NASA assets with attribution; animation respects reduced motion.
 

@@ -6,7 +6,9 @@ Work stays on `feat/femintravel-production-v2`. `main` is untouched. Complete pr
 
 - [ ] Create/link the owner-controlled Vercel project to `Mustusinho/femin-travel`. Use Next.js, Node 22, `yarn install --frozen-lockfile`, `yarn build` (see `vercel.json`).
 - [ ] Use isolated preview credentials and a test database. Do not send test leads/messages to real customers.
+- [ ] For UI/checklist QA before live setup, set `FEMINTRAVEL_PREVIEW_CHECKLIST=true` on Vercel **Preview**, scoped to `feat/femintravel-production-v2`, and redeploy. Inherited provider credentials are disabled; no live AI, storage, email, analytics or external geocoding is exercised. Production ignores this flag. Remove the branch override only when the isolated live-preview integration checks below can be completed.
 - [ ] Copy names from `.env.example` into the appropriate Vercel environments; never commit actual values.
+- [ ] Review legacy names deliberately: configure server-only `SUPABASE_URL`, `NEXT_PUBLIC_APP_URL` and `OPENAI_TRAVEL_MODEL` instead of relying on `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_BASE_URL` or `AI_MODEL`. Keep production variables untouched during preview repair. Private `EMAIL_TO`/admin addresses do not establish a public contact inbox.
 - [ ] Set `NEXT_PUBLIC_APP_URL` to the real HTTPS application origin with no path and `NEXT_PUBLIC_CONTACT_EMAIL` to an actually owned, monitored inbox. Production builds reject missing values.
 - [ ] Keep `SITE_INDEXING_ENABLED=false` until domain and production content are approved. Preview/local deployments always return noindex even when this flag is true.
 - [ ] Run `yarn check:env`. A configured production integration requires persistent rate limiting and a private `RATE_LIMIT_SALT` of at least 32 characters. Generate it in a password manager or secure random generator.
