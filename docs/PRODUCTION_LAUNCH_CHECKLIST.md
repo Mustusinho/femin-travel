@@ -2,6 +2,8 @@
 
 Work stays on `feat/femintravel-production-v2`. `main` is untouched. Complete preview QA before considering an owner-approved production merge. No production deployment is authorized by this checklist.
 
+For the separate-account, owner-managed Supabase preview, follow [the exact isolated preview setup instructions](ISOLATED_PREVIEW_SETUP.md). The owner applies the migrations; the agent verifies the new deployed target after setup. Do not access the older inactive project.
+
 ## Environment and deployment
 
 - [ ] Create/link the owner-controlled Vercel project to `Mustusinho/femin-travel`. Use Next.js, Node 22, `yarn install --frozen-lockfile`, `yarn build` (see `vercel.json`).

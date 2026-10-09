@@ -8,12 +8,12 @@ Branch: `feat/femintravel-production-v2`, based on recoverable baseline `dd340ed
 | --- | --- |
 | Dependency installation | Yarn install passed; lockfile committed |
 | Production build | `yarn build` passed on Next.js 15.5.27 / React 18 |
-| Logic tests | 12/12 passed, including isolation of complete and partial inherited preview credentials without bypassing production validation |
+| Logic tests | 13/13 passed, including preview isolation, a live-requirements preflight that keeps checklist mode enabled, and strict app-origin validation |
 | Production browser suite | 10/10 passed on the deployed Vercel checklist preview; earlier local production suite also passed |
 | Lint | ESLint CLI passed, including undefined-variable checks |
 | Formatting | Prettier check passed |
 | Dependencies | Full Yarn audit on 2026-10-02: zero low/moderate/high/critical findings; no dependency changes since that check |
-| Database migrations | Both migrations applied to isolated PostgreSQL 16 on 2026-10-02; rollback-only assertions passed for RLS/privileges, rate limits, duplicate leads and expiry cleanup. No remote production migrations applied |
+| Database migrations | Both migrations reapplied to fresh, network-isolated local PostgreSQL 16 and 17 on 2026-10-09; expanded rollback-only assertions passed. No remote database migrations applied by this agent |
 | Routes/links | Rendered navigation crawled successfully; unknown destination/article routes return 404; no empty/#/javascript navigation links |
 | Desktop/mobile | 1280, 1440, 1920 and 360×800, 390×844, 430×932 passed viewport-fit checks; planner results also checked at 390/1440 |
 | Accessibility | Core-page axe WCAG checks have no serious/critical findings; mobile menu/sheet and chat keyboard behavior tested |
@@ -50,7 +50,7 @@ Additional deployed response checks confirmed all optional capabilities are fals
 | Area | Current status / remaining action |
 | --- | --- |
 | Branch / commits | `feat/femintravel-production-v2`; logical commits pushed normally. `main` remains `d7b658c`; no production merge/deployment |
-| Build / tests | Local `yarn build`, 12 logic tests, lint and formatting passed; Vercel build and 10 deployed browser tests passed |
+| Build / tests | Local `yarn build`, 13 logic tests, lint and formatting passed; earlier Vercel build and 10 deployed browser tests passed |
 | Routes | Homepage, planner, globe, six destinations, three articles, kit, About/contact/legal/accessibility and visible internal navigation verified |
 | Database | Reproducible migrations and isolated SQL QA passed. Configure an isolated preview project, apply migrations and test actual lead/save/recovery/limits before enabling storage |
 | OpenAI | Existing Vercel key name detected; availability/quota not tested. Preview intentionally disables calls. Validate genuine generation after persistent request protection is configured |
@@ -65,3 +65,23 @@ Additional deployed response checks confirmed all optional capabilities are fals
 The required live-preview configuration is an isolated `SUPABASE_URL` and service role, versioned migrations, a private 32+ character `RATE_LIMIT_SALT`, an actual `NEXT_PUBLIC_APP_URL`, and a verified `NEXT_PUBLIC_CONTACT_EMAIL`. Existing provider keys should be reused only after availability/ownership and isolation are confirmed; new keys are not assumed necessary. Resend sending-domain verification, genuine partner templates and social URLs are optional setup according to which features the owner enables. Schedule retention cleanup and validate provider spending limits before launch.
 
 **Ready for owner QA; do not merge yet.** Use [the production launch checklist](PRODUCTION_LAUNCH_CHECKLIST.md), complete isolated live-provider QA and approve actual contact/legal/domain configuration before considering production. No production-ready claim or automatic production merge/deploy is made.
+
+## Owner-managed isolated database handoff — 2026-10-09
+
+The owner clarified that the new Supabase project belongs to a separate account and will apply its migrations/configure credentials personally. The older inactive Femin Travel project was not queried or modified. No remote application database was linked, migrated or written to. The existing Supabase connection/CLI cannot identify the new target; that does not mean the new project does not exist.
+
+Only two branch-specific Vercel Preview variables were added: `NEXT_PUBLIC_APP_URL` uses the actual feature-preview alias, and `RATE_LIMIT_SALT` is a fresh private random value. The existing branch checklist override remains `true`. Production variable IDs, scopes and modification metadata were compared before/after and were unchanged. No secrets were printed or committed.
+
+Migration review and tests now cover all seven RLS flags; all 40 private-table CRUD privilege checks for anon/authenticated; public-content read-only grants; actual denied reads/inserts; private RPC restrictions; published/future article visibility; duplicate lead upsert; trip expiry cleanup; invalid rate-limit inputs; and expiry-window reset. The two exact repository migrations and `tests/migrations.sql` passed on dedicated local PostgreSQL 16 and 17 containers. All fixtures rolled back to zero leads/trips/rate limits/articles. Only the two QA containers created for this test were removed; existing containers were untouched. This is local SQL evidence, not durable cloud-storage or live Supabase API verification.
+
+`yarn check:preview` was added. It checks live-preview configuration shape despite checklist mode, makes no provider requests, prints variable names only and leaves checklist mode unchanged. Running it through authenticated `vercel env run --environment preview --git-branch feat/femintravel-production-v2` returned the expected failure: `SUPABASE_URL` and `NEXT_PUBLIC_CONTACT_EMAIL` are absent, so storage/abuse-protection and email prerequisites are not ready. The salt is configured; the protection error also reflects missing storage. Existing legacy OpenAI/Supabase/Resend keys are shared across Production and Preview and were not used for live calls. Their mere presence is not evidence of isolated credentials.
+
+Current blockers / unverified flows:
+
+- The owner must apply versions `20261002204904`, then `20261002204956`, to the new isolated project and provide its non-secret reference/API URL.
+- Branch-specific preview-only Supabase/OpenAI credentials and the real public contact inbox still need configuration. Optional Resend requires a preview-only key and verified sender; otherwise both email values should be empty branch overrides. Optional Mapbox should likewise use a preview-only token or an empty override.
+- Remote RLS/Data API access, durable trip/lead save/recovery, database failure handling, genuine AI generation and persistent app rate limits have not yet been tested against the new project.
+- No live contact test or transactional email was sent. Sender verification, provider acceptance and actual inbox delivery remain unverified.
+- Checklist mode has not been removed. Live configuration and initial integration checks must pass before enabling the branch's live mode and testing its deployed flows.
+
+The exact migration order, CLI/profile commands, current variable names and safe handoff steps are in [the isolated preview setup guide](ISOLATED_PREVIEW_SETUP.md). The owner can supply setup completion and the project/deployment identifiers without sending any secret values. Main and Production remain untouched; no merge or production deployment is authorized.

@@ -14,6 +14,7 @@ import { readConfig, socialLinks, httpsUrl } from '../lib/config.mjs'
 import { configErrors } from '../lib/config.mjs'
 import { bookingLinks } from '../lib/booking.mjs'
 import { writeLead } from '../lib/leads.mjs'
+import { previewReadinessErrors } from '../lib/preview-readiness.mjs'
 test('ordinary booking searches never imply affiliate relationships and encode destinations', () => {
   const links = bookingLinks({ name: 'São Paulo & coast', country: 'Brazil' })
   assert.equal(
@@ -137,6 +138,40 @@ test('leads require valid email and explicit consent; never accept a honeypot', 
     leadSchema.parse({ name: ' Alice ', email: 'A@B.com', consent: true }).email,
     'a@b.com'
   )
+})
+test('preview readiness checks real integration requirements while leaving checklist mode enabled', () => {
+  const env = {
+    VERCEL_ENV: 'preview',
+    FEMINTRAVEL_PREVIEW_CHECKLIST: 'true',
+    SUPABASE_URL: 'https://project.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-only',
+    RATE_LIMIT_SALT: 'x'.repeat(32),
+    NEXT_PUBLIC_APP_URL: 'https://preview.femintravel.test',
+    NEXT_PUBLIC_CONTACT_EMAIL: 'owner@femintravel.test',
+    OPENAI_API_KEY: 'test-only'
+  }
+  assert.deepEqual(previewReadinessErrors(env), [])
+  assert.equal(env.FEMINTRAVEL_PREVIEW_CHECKLIST, 'true')
+  assert.equal(readConfig(env).storage, false)
+  assert.equal(readConfig(env).ai, false)
+  for (const name of [
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'OPENAI_API_KEY',
+    'NEXT_PUBLIC_CONTACT_EMAIL'
+  ])
+    assert.ok(previewReadinessErrors({ ...env, [name]: '' }).some((error) => error.includes(name)))
+  assert.ok(previewReadinessErrors({ ...env, RATE_LIMIT_SALT: 'short' }).length)
+  assert.ok(previewReadinessErrors({ ...env, VERCEL_ENV: 'production' }).length)
+  assert.ok(previewReadinessErrors({ ...env, RESEND_API_KEY: 'test-only' }).length)
+  for (const NEXT_PUBLIC_APP_URL of [
+    'http://insecure.test',
+    'https://preview.femintravel.test/?',
+    'https://preview.femintravel.test/#',
+    'https://preview.femintravel.test/?token=test',
+    'https://preview.femintravel.test/#fragment'
+  ])
+    assert.ok(previewReadinessErrors({ ...env, NEXT_PUBLIC_APP_URL }).length)
 })
 test('trip dates reject impossible dates, reversed dates and excessively long trips', () => {
   for (const [startDate, endDate] of [

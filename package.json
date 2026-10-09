@@ -11,7 +11,8 @@
     "test:e2e": "playwright test",
     "format:check": "prettier --check app components/BookingCTAs.jsx components/AffiliateLink.jsx components/BlogIndex.jsx components/ContactForm.jsx components/LeadCapture.jsx components/ShareButton.jsx components/DestinationCard.jsx components/layout components/planner lib tests scripts next.config.js",
     "prebuild": "node scripts/check-env.mjs",
-    "check:env": "node scripts/check-env.mjs"
+    "check:env": "node scripts/check-env.mjs",
+    "check:preview": "node scripts/check-preview.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

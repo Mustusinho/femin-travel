@@ -38,6 +38,8 @@ The shared Header and Footer render working routes and configured real social li
 
 `.env.example` documents all names without secrets. `yarn check:env` loads local environment files safely; `yarn build` invokes it automatically.
 
+For the owner-managed isolated Supabase preview, use [the exact migration order and branch-specific variable guide](docs/ISOLATED_PREVIEW_SETUP.md). `yarn check:preview` validates live-preview configuration requirements without changing checklist mode or calling providers; it does not prove provider ownership or operational readiness.
+
 | Category | Configuration and behavior |
 | --- | --- |
 | App | `NEXT_PUBLIC_APP_URL` is the real HTTPS origin. `NEXT_PUBLIC_CONTACT_EMAIL` is an owned inbox. Both are required for the Vercel production environment, never invented. |
