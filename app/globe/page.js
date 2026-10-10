@@ -25,6 +25,7 @@ import {
 
 import BookingCTAs from '../../components/BookingCTAs'
 import { fallbackBrief } from '@/lib/brief-fallback'
+import { destinations as curatedDestinations } from '@/lib/destinations'
 import { trackEvent as recordProductEvent } from '@/lib/events'
 
 // ─── iOS Safari WebGPU polyfill ───────────────────────────────────────────────
@@ -107,6 +108,24 @@ const featuredDestinations = [
     slug: 'reykjavik'
   }
 ]
+
+function curatedBriefFor(destination) {
+  const curated = curatedDestinations.find(
+    (place) =>
+      place.slug === destination?.slug ||
+      (normalize(place.name) === normalize(destination?.name) &&
+        normalize(place.country) === normalize(destination?.country))
+  )
+  if (!curated) return null
+  return {
+    overview: curated.lead,
+    safety_tips: [curated.arrival, ...curated.considerations],
+    things_to_do: curated.experiences,
+    neighborhoods_to_stay: curated.areas,
+    source: curated.source,
+    sourceLabel: 'Curated planning notes · check current details'
+  }
+}
 
 // ─── Trip context helpers ─────────────────────────────────────────────────────
 const STYLE_LABEL = { budget: 'Budget', comfortable: 'Comfortable', luxury: 'Luxury' }
@@ -249,6 +268,16 @@ function DestinationPanel({
       {brief.overview && (
         <div className="px-5 py-4">
           <p className="text-sm text-gray-600 leading-relaxed">{brief.overview}</p>
+          {brief.source && (
+            <a
+              href={brief.source}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-xs font-semibold text-[#753957] underline"
+            >
+              {brief.sourceLabel || 'Check the source for current details'} ↗
+            </a>
+          )}
           {brief.best_time_to_visit && (
             <div className="flex items-start gap-2 mt-3 bg-blue-50 rounded-xl px-3 py-2.5">
               <Clock className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
@@ -261,7 +290,7 @@ function DestinationPanel({
       {/* Safety */}
       {brief.safety_tips?.length > 0 && (
         <div className="px-5 py-4">
-          <SectionLabel icon={Shield} label="Safety overview" color="text-rose-400" />
+          <SectionLabel icon={Shield} label="Arrival & practical checks" color="text-rose-400" />
           <ul className="space-y-2">
             {brief.safety_tips.map((tip, i) => (
               <li key={i} className="flex items-start gap-2.5 bg-rose-50 rounded-xl px-3 py-2.5">
@@ -489,6 +518,11 @@ function DestinationPanel({
               <BookingCTAs destination={destination} compact placement="globe" />
             </>
           )}
+          {destination?.isRemoteArea && (
+            <Link href="/plan" className="btn-primary block text-center mb-3">
+              Plan a nearby city →
+            </Link>
+          )}
           {onOpenChat && (
             <button
               onClick={onOpenChat}
@@ -625,6 +659,11 @@ function DestinationPanel({
               Plan this trip
             </Link>
           </>
+        )}
+        {destination?.isRemoteArea && (
+          <Link href="/plan" className="btn-primary block text-center mb-3">
+            Plan a nearby city →
+          </Link>
         )}
         {onOpenChat && (
           <button
@@ -1032,6 +1071,8 @@ function GlobePageContent() {
       if (controls) {
         controls.enableDamping = true
         controls.dampingFactor = 0.08
+        controls.minDistance = 185
+        controls.maxDistance = 500
       }
     } catch {}
   }, [isMobile])
@@ -1056,6 +1097,11 @@ function GlobePageContent() {
             destination.explanation ||
             'Explore this region by searching for a travel city. No city-specific brief has been generated.'
         })
+        setIsLoadingBrief(false)
+        return
+      }
+      if (!aiAvailable) {
+        setBrief(curatedBriefFor(destination) || fallbackBrief(destination?.name))
         setIsLoadingBrief(false)
         return
       }
@@ -1092,7 +1138,7 @@ function GlobePageContent() {
         if (id === briefRequestId.current) setIsLoadingBrief(false)
       }
     },
-    [getCachedBrief, setCachedBrief]
+    [aiAvailable, getCachedBrief, setCachedBrief]
   )
 
   const selectDestination = useCallback(
@@ -1127,35 +1173,52 @@ function GlobePageContent() {
     selectDestination(point, { track: true })
   }
 
-  const handleGlobeClick = async ({ lat, lng }) => {
-    if (!tapAnywhere) return
-    const id = ++geoRequestId.current
-    setLocationMessage('Identifying the selected area…')
-    geoAbortRef.current?.abort()
-    const controller = new AbortController()
-    geoAbortRef.current = controller
-    trackEvent('globe_location_selected', {})
-    try {
-      const response = await fetch('/api/geocode/reverse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({ lat, lng })
-      })
-      const data = await response.json()
-      if (id !== geoRequestId.current) return
-      if (!response.ok) throw new Error(data.error)
-      const destination = { id: 'custom', ...data, ...normalizePlaceName(data), slug: 'custom' }
-      selectDestination(destination)
-      setLocationMessage(data.planningEligible ? '' : data.explanation)
-    } catch (e) {
-      if (e.name !== 'AbortError' && id === geoRequestId.current)
-        setLocationMessage(
-          e.message ||
-            'We could not identify this location accurately. Search for a city or choose another destination.'
-        )
-    }
-  }
+  const handleGlobeClick = useCallback(
+    async ({ lat, lng }) => {
+      if (!tapAnywhere) return
+      const id = ++geoRequestId.current
+      setLocationMessage('Identifying the selected area…')
+      geoAbortRef.current?.abort()
+      const controller = new AbortController()
+      geoAbortRef.current = controller
+      trackEvent('globe_location_selected', {})
+      try {
+        const response = await fetch('/api/geocode/reverse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ lat, lng })
+        })
+        const data = await response.json()
+        if (id !== geoRequestId.current) return
+        if (!response.ok) throw new Error(data.error)
+        const destination = { id: 'custom', ...data, ...normalizePlaceName(data), slug: 'custom' }
+        selectDestination(destination)
+        setLocationMessage(data.planningEligible ? '' : data.explanation)
+      } catch (e) {
+        if (e.name !== 'AbortError' && id === geoRequestId.current)
+          setLocationMessage(
+            e.message ||
+              'We could not identify this location accurately. Search for a city or choose another destination.'
+          )
+      }
+    },
+    [tapAnywhere, trackEvent, selectDestination]
+  )
+  const initialPointHandled = useRef(false)
+  useEffect(() => {
+    if (initialPointHandled.current || (!globeReady && !blocked)) return
+    const rawLat = searchParams.get('lat')
+    const rawLng = searchParams.get('lng')
+    if (rawLat === null || rawLng === null) return
+    const lat = Number(rawLat)
+    const lng = Number(rawLng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)
+      return
+    initialPointHandled.current = true
+    flyToLocation(lat, lng, 1.8)
+    handleGlobeClick({ lat, lng })
+  }, [searchParams, globeReady, blocked, flyToLocation, handleGlobeClick])
   const chooseSearchResult = (data) => {
     geoRequestId.current++
     geoAbortRef.current?.abort()
@@ -1190,6 +1253,12 @@ function GlobePageContent() {
         body: JSON.stringify({ query: searchQuery.trim() })
       })
       const data = await response.json()
+      if (response.status === 503) {
+        setSearchError(
+          'Place lookup is unavailable in this preview. Plan with the place you typed, or choose a featured marker.'
+        )
+        return
+      }
       if (!response.ok) throw new Error(data.error)
       if (!data.length) setSearchError('No places found. Try a city and country.')
       else if (data.length === 1) chooseSearchResult(data[0])
@@ -1260,17 +1329,30 @@ function GlobePageContent() {
                 ))}
               </ul>
             )}
-            <p role="status" className="text-white text-sm mt-2">
-              {searchError}
-            </p>
+            {searchError && (
+              <p role="status" className="text-white text-sm mt-2 bg-[#21182b]/90 rounded-xl p-3">
+                {searchError}
+              </p>
+            )}
+            {searchError && searchQuery.trim() && (
+              <Link
+                href={`/plan?destination=${encodeURIComponent(searchQuery.trim())}`}
+                className="inline-block bg-white text-[#753957] font-semibold text-sm rounded-full px-4 py-2 mt-2"
+              >
+                Plan the place I typed →
+              </Link>
+            )}
           </form>
         </div>
 
         <div className="flex gap-2 mt-3">
           <button
             onClick={() => setTapAnywhere((v) => !v)}
+            aria-pressed={tapAnywhere}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors pointer-events-auto ${
-              tapAnywhere ? 'bg-pink-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'
+              tapAnywhere
+                ? 'bg-white/90 text-[#472b42]'
+                : 'bg-white/15 text-white hover:bg-white/25'
             }`}
           >
             <MapPin className="w-4 h-4 inline mr-1" />
@@ -1278,10 +1360,11 @@ function GlobePageContent() {
           </button>
           <button
             onClick={() => setShowMarkers((v) => !v)}
+            aria-pressed={showMarkers}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors pointer-events-auto ${
               showMarkers
-                ? 'bg-purple-600 text-white'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
+                ? 'bg-white/90 text-[#472b42]'
+                : 'bg-white/15 text-white hover:bg-white/25'
             }`}
           >
             Featured Markers {showMarkers ? 'ON' : 'OFF'}
@@ -1289,7 +1372,7 @@ function GlobePageContent() {
         </div>
 
         {tapAnywhere && (
-          <p className="text-white/60 text-sm mt-2 bg-black/30 backdrop-blur-sm inline-block px-3 py-1 rounded-full">
+          <p className="text-white/95 text-sm mt-2 bg-[#21182b]/85 backdrop-blur-sm inline-block px-3 py-2 rounded-xl max-w-xl">
             Tap a point or search a place → read planning notes → plan your trip. Some locations
             need a nearby city search.
           </p>
@@ -1299,7 +1382,7 @@ function GlobePageContent() {
       {locationMessage && (
         <p
           role="status"
-          className="absolute left-4 right-4 top-[180px] z-40 text-sm text-white bg-black/70 rounded-xl p-3 max-w-sm pointer-events-none"
+          className="absolute left-4 right-4 top-[200px] z-40 text-sm text-white bg-[#21182b]/90 rounded-xl p-3 max-w-sm pointer-events-none"
         >
           {locationMessage}
         </p>
@@ -1322,7 +1405,7 @@ function GlobePageContent() {
             width={viewport.w}
             height={viewport.h}
             rendererConfig={rendererConfig}
-            globeImageUrl={isMobile ? '/earth/earth-mobile.jpg' : '/earth/earth-day.jpg'}
+            globeImageUrl="/earth/earth-day.jpg"
             backgroundColor="#080c1c"
             atmosphereColor="#7fb6e8"
             atmosphereAltitude={0.16}
@@ -1334,9 +1417,9 @@ function GlobePageContent() {
             ]}
             pointLat={(d) => d.lat}
             pointLng={(d) => d.lng}
-            pointColor={(d) => (d._type === 'selected' ? '#ffffff' : '#ff69b4')}
-            pointAltitude={(d) => (d._type === 'selected' ? 0.06 : 0.02)}
-            pointRadius={(d) => (d._type === 'selected' ? 0.6 : 0.35)}
+            pointColor={(d) => (d._type === 'selected' ? '#ffffff' : '#f3a7bf')}
+            pointAltitude={0}
+            pointRadius={(d) => (d._type === 'selected' ? 0.5 : 0.3)}
             pointLabel={(d) => {
               const el = document.createElement('span')
               el.textContent = `${d.name}, ${d.country}`

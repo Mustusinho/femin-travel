@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { destinations } from '@/lib/destinations'
 import DestinationCard from '@/components/DestinationCard'
 import LeadCapture from '@/components/LeadCapture'
+import HomeGlobe from '@/components/HomeGlobe'
 import { pageMetadata } from '@/lib/metadata'
 export const metadata = pageMetadata(
   'Thoughtful trips, beautifully planned',
@@ -55,24 +55,7 @@ export default function Home() {
           </p>
         </div>
         <div className="hero-editorial">
-          <div className="hero-photo">
-            <Image
-              src={destinations.find((d) => d.slug === 'lisbon').image}
-              alt="Lisbon rooftops and city scenery"
-              fill
-              priority
-              sizes="(max-width:900px) 90vw, 560px"
-              className="object-cover"
-            />
-          </div>
-          <div className="hero-caption">
-            <p className="eyebrow">A good journey starts before arrival</p>
-            <p>
-              One place in mind.
-              <br />A whole trip to make yours.
-            </p>
-            <Link href="/plan?destination=Lisbon">Plan a Lisbon trip →</Link>
-          </div>
+          <HomeGlobe />
         </div>
       </section>
       <section className="home-section">

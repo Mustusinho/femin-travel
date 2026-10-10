@@ -3,10 +3,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 const links = [
-  ['Plan Trip', '/plan'],
   ['Explore Globe', '/globe'],
   ['Destinations', '/destinations'],
-  ['Blog', '/blog'],
+  ['Travel Guides', '/blog'],
   ['Free Kit', '/free-kit'],
   ['About', '/about'],
   ['Contact', '/contact']
@@ -32,6 +31,7 @@ export default function Header() {
         <Link href="/" className="brand" aria-label="FeminTravel home">
           <span aria-hidden="true">✦</span> FeminTravel
         </Link>
+        <span className="brand-line">Explore with intention</span>
         <nav aria-label="Main navigation" className="desktop-nav">
           {links.slice(0, 4).map(([label, href]) => (
             <Link key={href} href={href} aria-current={path === href ? 'page' : undefined}>
@@ -39,8 +39,12 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        <Link href="/plan" className="btn-primary nav-cta">
-          Plan My Trip
+        <Link
+          href="/plan"
+          className="btn-primary nav-cta"
+          aria-current={path === '/plan' ? 'page' : undefined}
+        >
+          Build my trip →
         </Link>
         <button
           ref={button}
