@@ -460,7 +460,8 @@ function DestinationPanel({
                 <p className="text-white/75 text-xs font-medium mb-2.5">{tripContextLine}</p>
               )}
               <p className="text-xs text-gray-700 bg-white/90 rounded-xl p-2 mt-2">
-                Planning assistance · verify before booking
+                Explore the notes below, then make a plan for this place. Verify changing details
+                before booking.
               </p>
             </>
           )}
@@ -590,7 +591,8 @@ function DestinationPanel({
             </div>
             {tripContextLine && <p className="text-gray-500 text-xs mt-1.5">{tripContextLine}</p>}
             <p className="text-xs text-gray-700 bg-white/90 rounded-xl p-2 mt-2">
-              Planning assistance · verify before booking
+              Explore these planning notes, then make a plan. Verify changing details before
+              booking.
             </p>
           </>
         )}
@@ -1272,7 +1274,7 @@ function GlobePageContent() {
             }`}
           >
             <MapPin className="w-4 h-4 inline mr-1" />
-            Tap Anywhere {tapAnywhere ? 'ON' : 'OFF'}
+            Pick a point {tapAnywhere ? 'ON' : 'OFF'}
           </button>
           <button
             onClick={() => setShowMarkers((v) => !v)}
@@ -1288,7 +1290,8 @@ function GlobePageContent() {
 
         {tapAnywhere && (
           <p className="text-white/60 text-sm mt-2 bg-black/30 backdrop-blur-sm inline-block px-3 py-1 rounded-full">
-            👆 Tap the globe to explore; place identification varies
+            Tap a point or search a place → read planning notes → plan your trip. Some locations
+            need a nearby city search.
           </p>
         )}
       </div>
@@ -1357,7 +1360,7 @@ function GlobePageContent() {
       </div>
 
       <details className="absolute bottom-4 left-4 z-40 bg-black/75 text-white rounded-xl p-3 max-w-[220px]">
-        <summary className="cursor-pointer text-xs">Choose a destination</summary>
+        <summary className="cursor-pointer text-xs">Choose a featured place</summary>
         <div className="grid grid-cols-2 gap-1 mt-3">
           {featuredDestinations.map((d) => (
             <button

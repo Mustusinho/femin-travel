@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PrintKitButton from '@/components/PrintKitButton'
 import {
   ShieldCheck,
   MapPin,
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react'
 
 export const metadata = {
-  title: 'Free Free Solo Travel Planning Kit — FeminTravel',
+  title: 'Free Solo Travel Planning Kit — FeminTravel',
   description:
     'Your complete solo travel kit: safety checklists, packing lists, budget prep, and emergency planning.'
 }
@@ -160,7 +161,7 @@ function ChecklistCard({ checklist }) {
 
 export default function FreeKitPage() {
   return (
-    <main id="main-content" className="min-h-screen bg-[hsl(30,33%,98%)] pb-20">
+    <main id="main-content" className="free-kit-page min-h-screen bg-[hsl(30,33%,98%)] pb-20">
       {/* Header */}
       <div className="bg-gradient-to-br from-[hsl(346,74%,92%)] via-[hsl(300,40%,96%)] to-[hsl(270,50%,92%)] px-4 pt-8 pb-12">
         <div className="max-w-2xl mx-auto">
@@ -184,9 +185,15 @@ export default function FreeKitPage() {
             </div>
           </div>
           <p className="text-gray-600 max-w-lg leading-relaxed">
-            Five practical checklists to plan, pack, and arrive safely — for any destination
-            worldwide. Tick each item as you go.
+            Five practical checklists for the details before departure and the first hours after
+            arrival. Tick items as you go, then take a copy with you.
           </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <PrintKitButton />
+            <span className="text-xs text-gray-600">
+              Choose “Save as PDF” in your browser’s print dialog.
+            </span>
+          </div>
         </div>
       </div>
 
@@ -228,8 +235,9 @@ export default function FreeKitPage() {
 
         {/* Disclaimer */}
         <p className="text-xs text-gray-600 text-center px-2 leading-relaxed">
-          These checklists are practical planning guides. Always verify entry requirements, visa
-          rules, and advisories with official government and embassy sources before travel.
+          These checklists are practical planning guides. Check entry rules and advisories with
+          official sources. Ticks stay on this page only until you leave or reload; print or save a
+          copy to keep your progress.
         </p>
 
         {/* CTAs */}

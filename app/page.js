@@ -6,7 +6,7 @@ import LeadCapture from '@/components/LeadCapture'
 import { pageMetadata } from '@/lib/metadata'
 export const metadata = pageMetadata(
   'Thoughtful trips, beautifully planned',
-  'AI-powered travel planning for women and friends. Turn a trip idea into an itinerary and practical preparation.',
+  'Choose a destination, build a trip around your own pace, and prepare for your arrival.',
   '/'
 )
 export default function Home() {
@@ -16,24 +16,42 @@ export default function Home() {
         <div>
           <p className="eyebrow">For women and friends, wherever you’re headed</p>
           <h1>
-            Thoughtful trips.
+            Somewhere in mind?
             <br />
-            <span>Beautifully planned.</span>
+            <span>Let’s make it a journey.</span>
           </h1>
           <p>
-            A little clarity before you go. Bring your itinerary, arrival strategy and practical
-            safety preparation together in one place.
+            Start with a place you love, or pick a point on the globe. Shape the days, plan your
+            arrival and take the practical details with you.
           </p>
-          <div className="flex flex-wrap gap-3 mt-7">
-            <Link href="/plan" className="btn-primary">
-              Plan My Trip
-            </Link>
+          <form action="/plan" method="get" className="destination-start">
+            <label htmlFor="home-destination">Where would you like to go?</label>
+            <div className="destination-start-row">
+              <input
+                id="home-destination"
+                name="destination"
+                type="text"
+                maxLength={120}
+                placeholder="A city or place, anywhere in the world"
+                autoComplete="off"
+                required
+              />
+              <button type="submit" className="btn-primary">
+                Plan my trip →
+              </button>
+            </div>
+          </form>
+          <div className="hero-explore">
+            <span>Still deciding?</span>
             <Link href="/globe" className="btn-secondary">
-              Explore Globe
+              Explore the globe →
+            </Link>
+            <Link href="/free-kit" className="hero-kit-link">
+              Get the free travel kit
             </Link>
           </div>
           <p className="hero-note">
-            AI planning assistance · No safety scores · No live-price promises
+            Your plan is a starting point. Check current details before booking.
           </p>
         </div>
         <div className="hero-editorial">
@@ -50,9 +68,8 @@ export default function Home() {
           <div className="hero-caption">
             <p className="eyebrow">A good journey starts before arrival</p>
             <p>
-              Less guesswork.
-              <br />
-              More room to explore.
+              One place in mind.
+              <br />A whole trip to make yours.
             </p>
             <Link href="/plan?destination=Lisbon">Plan a Lisbon trip →</Link>
           </div>
@@ -73,18 +90,18 @@ export default function Home() {
           {[
             [
               '01',
-              'Tell us what matters',
-              'A few steps capture your destination, budget, interests and planning preferences.'
+              'Choose your place',
+              'Type any destination or discover one on the globe. Then add dates, pace and what matters to you.'
             ],
             [
               '02',
-              'Shape your days',
-              'Receive an itinerary when AI is available, or a clearly labelled preparation checklist.'
+              'Make the days yours',
+              'Build an itinerary when AI is available, or a clearly labelled preparation checklist shaped by your choices.'
             ],
             [
               '03',
-              'Review, then book',
-              'Check current information, compare provider options and save a recovery link when storage is enabled.'
+              'Take your plan along',
+              'Print or save your plan as a PDF. Check current details and provider options before booking.'
             ]
           ].map(([n, title, copy]) => (
             <article key={n}>
