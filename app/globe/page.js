@@ -1405,7 +1405,7 @@ function GlobePageContent() {
             width={viewport.w}
             height={viewport.h}
             rendererConfig={rendererConfig}
-            globeImageUrl="/earth/earth-day.jpg"
+            globeImageUrl="/earth/earth-detail.jpg"
             backgroundColor="#080c1c"
             atmosphereColor="#7fb6e8"
             atmosphereAltitude={0.16}

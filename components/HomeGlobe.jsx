@@ -26,6 +26,12 @@ export default function HomeGlobe() {
 
   const onReady = () => {
     globe.current?.pointOfView({ lat: 25, lng: 10, altitude: 2.35 }, 0)
+    const renderer = globe.current?.renderer?.()
+    if (renderer) {
+      renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.5 : 2)
+      )
+    }
     const controls = globe.current?.controls?.()
     if (controls) {
       controls.minDistance = 185
@@ -44,7 +50,7 @@ export default function HomeGlobe() {
       <Globe3D
         ref={globe}
         className="home-globe-canvas"
-        globeImageUrl="/earth/earth-day.jpg"
+        globeImageUrl="/earth/earth-detail.jpg"
         backgroundColor="#241b30"
         atmosphereColor="#f6b7cf"
         atmosphereAltitude={0.14}
