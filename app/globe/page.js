@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 
 import BookingCTAs from '../../components/BookingCTAs'
+import ExploreMap from '@/components/ExploreMap'
 import { fallbackBrief } from '@/lib/brief-fallback'
 import { destinations as curatedDestinations } from '@/lib/destinations'
 import { trackEvent as recordProductEvent } from '@/lib/events'
@@ -936,6 +937,7 @@ function GlobePageContent() {
 
   const containerRef = useRef(null)
   const globeRef = useRef(null)
+  const mapRef = useRef(null)
 
   const [Globe, setGlobe] = useState(null)
   const [blocked, setBlocked] = useState(false)
@@ -969,6 +971,7 @@ function GlobePageContent() {
   const [tapAnywhere, setTapAnywhere] = useState(true)
 
   const [selectedDestination, setSelectedDestination] = useState(null)
+  const detailedMapsAvailable = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.startsWith('pk.'))
   const [brief, setBrief] = useState(null)
   const [isLoadingBrief, setIsLoadingBrief] = useState(false)
   const [globeReady, setGlobeReady] = useState(false)
@@ -1028,6 +1031,7 @@ function GlobePageContent() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (detailedMapsAvailable) return
     if (!hasWebGL()) {
       setBlocked(true)
       return
@@ -1044,13 +1048,17 @@ function GlobePageContent() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [detailedMapsAvailable])
 
   const flyToLocation = useCallback(
     (lat, lng, altitude = 1.5) => {
-      globeRef.current?.pointOfView({ lat, lng, altitude }, reducedMotion ? 0 : 900)
+      if (detailedMapsAvailable) {
+        mapRef.current?.flyTo(lat, lng, { reducedMotion, zoom: 8 })
+      } else {
+        globeRef.current?.pointOfView({ lat, lng, altitude }, reducedMotion ? 0 : 900)
+      }
     },
-    [reducedMotion]
+    [detailedMapsAvailable, reducedMotion]
   )
 
   const trackEvent = useCallback(
@@ -1345,7 +1353,7 @@ function GlobePageContent() {
           </form>
         </div>
 
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-3 flex-wrap">
           <button
             onClick={() => setTapAnywhere((v) => !v)}
             aria-pressed={tapAnywhere}
@@ -1373,8 +1381,9 @@ function GlobePageContent() {
 
         {tapAnywhere && (
           <p className="text-white/95 text-sm mt-2 bg-[#21182b]/85 backdrop-blur-sm inline-block px-3 py-2 rounded-xl max-w-xl">
-            Tap a point or search a place → read planning notes → plan your trip. Some locations
-            need a nearby city search.
+            {detailedMapsAvailable
+              ? 'Drag to explore, scroll or pinch to zoom, then tap a place to plan your trip.'
+              : 'Tap a point or search a place → read planning notes → plan your trip. Some locations need a nearby city search.'}
           </p>
         )}
       </div>
@@ -1389,7 +1398,17 @@ function GlobePageContent() {
       )}
       {/* Globe */}
       <div className="absolute inset-0">
-        {blocked ? (
+        {detailedMapsAvailable ? (
+          <ExploreMap
+            ref={mapRef}
+            destinations={featuredDestinations}
+            selectedDestination={selectedDestination}
+            showMarkers={showMarkers}
+            onPointClick={handleGlobeClick}
+            onDestinationClick={handleMarkerClick}
+            onReady={() => setGlobeReady(true)}
+          />
+        ) : blocked ? (
           <GlobeFallback onSelectDestination={selectDestination} />
         ) : !Globe || viewport.w === 0 ? (
           <div className="w-full h-full flex items-center justify-center">
